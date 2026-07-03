@@ -1,36 +1,96 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Safvane Naturals — Ecommerce Website
 
-## Getting Started
+Next.js ecommerce storefront and admin panel for Safvane Naturals, built from the PRD v2 spec.
 
-First, run the development server:
+## Tech Stack
+
+- **Next.js 16** (App Router) + TypeScript
+- **Tailwind CSS 4**
+- **Supabase** (Postgres, Auth, Storage)
+- **Resend** (order email notifications, optional)
+
+## Quick Start
+
+### 1. Install dependencies
+
+```bash
+cd safvane-web
+npm install
+```
+
+### 2. Set up Supabase
+
+1. Create a project at [supabase.com](https://supabase.com)
+2. Run `supabase/schema.sql` in the SQL Editor
+3. Create two admin users in **Authentication → Users** (founder + brother)
+4. Copy your project URL and keys
+
+### 3. Environment variables
+
+Copy `.env.example` to `.env.local` and fill in:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+RESEND_API_KEY=          # optional
+RESEND_FROM_EMAIL=
+```
+
+### 4. Run locally
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- Storefront: http://localhost:3000
+- Admin: http://localhost:3000/admin
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## What's Included (Phase 1)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Storefront
+- Home (hero, featured products, trust badges)
+- Shop with category filtering
+- Product detail (variants, gallery, stock-aware cart)
+- Cart (localStorage persistence, stock validation)
+- Checkout (guest, COD, Pakistani phone validation)
+- Order confirmation
+- About, FAQ, Contact (CMS-driven)
 
-## Learn More
+### Admin Panel (`/admin`)
+- Dashboard with recent orders and low-stock alerts
+- Products CRUD with variants and image upload
+- Categories CRUD
+- Orders list and status management (stock restored on cancel)
+- Content editor (About, FAQ)
+- Site settings (shipping fee, notifications, contact info)
 
-To learn more about Next.js, take a look at the following resources:
+## Deploy to Vercel
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Push to GitHub
+2. Import project in Vercel
+3. Add environment variables
+4. Deploy
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Outstanding PRD Decisions
 
-## Deploy on Vercel
+| Decision | Current approach |
+|---|---|
+| WhatsApp notifications | `wa.me` click-to-send link on order confirmation (v1 fallback) |
+| Customer email at checkout | Optional field added |
+| Blog / Analytics | Phase 2 — not yet built |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Project Structure
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+safvane-web/
+├── supabase/schema.sql    # Database schema + seed data
+├── src/
+│   ├── app/
+│   │   ├── (storefront)/  # Public pages
+│   │   ├── admin/         # Admin panel
+│   │   └── api/           # Order & settings APIs
+│   ├── components/
+│   ├── context/           # Cart state
+│   └── lib/               # Supabase, data, utils
+```
