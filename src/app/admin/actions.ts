@@ -100,9 +100,9 @@ export async function saveProduct(formData: FormData) {
     }
   }
 
-  revalidatePath("/", "layout");
-  revalidatePath("/shop", "page");
-  revalidatePath(`/products/${slug}`, "page");
+  if (productId) {
+    await revalidateProductStorefront(productId);
+  }
   revalidatePath("/admin/products");
   return { success: true, productId };
 }
@@ -152,7 +152,13 @@ export async function deleteCategory(id: string) {
 export async function updateOrderStatus(orderId: string, status: string) {
   const supabase = await createClient();
 
-  if (status === "cancelled") {
+  const { data: current } = await supabase
+    .from("orders")
+    .select("status")
+    .eq("id", orderId)
+    .single();
+
+  if (status === "cancelled" && current?.status !== "cancelled") {
     const { data: items } = await supabase
       .from("order_items")
       .select("product_variant_id, quantity")
@@ -160,6 +166,7 @@ export async function updateOrderStatus(orderId: string, status: string) {
 
     if (items) {
       for (const item of items) {
+        if (!item.product_variant_id) continue;
         const { data: variant } = await supabase
           .from("product_variants")
           .select("stock_quantity")
@@ -184,6 +191,135 @@ export async function updateOrderStatus(orderId: string, status: string) {
     .update({ status })
     .eq("id", orderId);
   if (error) return { error: error.message };
+  revalidatePath("/admin/orders");
+  revalidatePath(`/admin/orders/${orderId}`);
+  return { success: true };
+}
+
+export async function updateOrder(
+  orderId: string,
+  data: {
+    customer_name: string;
+    customer_phone: string;
+    customer_email: string | null;
+    delivery_address: string;
+    city: string;
+    order_note: string | null;
+    status: string;
+    shipping_fee: number;
+  }
+) {
+  const supabase = await createClient();
+
+  const { data: current, error: fetchError } = await supabase
+    .from("orders")
+    .select("status, subtotal")
+    .eq("id", orderId)
+    .single();
+
+  if (fetchError || !current) {
+    return { error: fetchError?.message ?? "Order not found" };
+  }
+
+  if (data.status === "cancelled" && current.status !== "cancelled") {
+    const restore = await updateOrderStatus(orderId, "cancelled");
+    if (restore.error) return restore;
+    const { error } = await supabase
+      .from("orders")
+      .update({
+        customer_name: data.customer_name.trim(),
+        customer_phone: data.customer_phone.trim(),
+        customer_email: data.customer_email?.trim() || null,
+        delivery_address: data.delivery_address.trim(),
+        city: data.city.trim(),
+        order_note: data.order_note?.trim() || null,
+        shipping_fee: data.shipping_fee,
+        total: Number(current.subtotal) + data.shipping_fee,
+        status: "cancelled",
+      })
+      .eq("id", orderId);
+    if (error) return { error: error.message };
+    revalidatePath("/admin/orders");
+    revalidatePath(`/admin/orders/${orderId}`);
+    return { success: true };
+  }
+
+  const total = Number(current.subtotal) + data.shipping_fee;
+
+  const { error } = await supabase
+    .from("orders")
+    .update({
+      customer_name: data.customer_name.trim(),
+      customer_phone: data.customer_phone.trim(),
+      customer_email: data.customer_email?.trim() || null,
+      delivery_address: data.delivery_address.trim(),
+      city: data.city.trim(),
+      order_note: data.order_note?.trim() || null,
+      status: data.status,
+      shipping_fee: data.shipping_fee,
+      total,
+    })
+    .eq("id", orderId);
+
+  if (error) return { error: error.message };
+  revalidatePath("/admin/orders");
+  revalidatePath(`/admin/orders/${orderId}`);
+  return { success: true };
+}
+
+async function restoreOrderStock(orderId: string) {
+  const supabase = await createClient();
+  const { data: items } = await supabase
+    .from("order_items")
+    .select("product_variant_id, quantity")
+    .eq("order_id", orderId);
+
+  if (!items) return;
+
+  for (const item of items) {
+    if (!item.product_variant_id) continue;
+    const { data: variant } = await supabase
+      .from("product_variants")
+      .select("stock_quantity")
+      .eq("id", item.product_variant_id)
+      .single();
+    if (variant) {
+      const newStock = variant.stock_quantity + item.quantity;
+      await supabase
+        .from("product_variants")
+        .update({
+          stock_quantity: newStock,
+          stock_status: newStock > 0 ? "in_stock" : "out_of_stock",
+        })
+        .eq("id", item.product_variant_id);
+    }
+  }
+}
+
+export async function deleteOrder(orderId: string, confirmOrderNumber: string) {
+  const supabase = await createClient();
+
+  const { data: order, error: fetchError } = await supabase
+    .from("orders")
+    .select("order_number, status")
+    .eq("id", orderId)
+    .single();
+
+  if (fetchError || !order) {
+    return { error: fetchError?.message ?? "Order not found" };
+  }
+
+  if (confirmOrderNumber.trim() !== order.order_number) {
+    return { error: "Order number does not match. Deletion cancelled." };
+  }
+
+  if (order.status !== "cancelled") {
+    await restoreOrderStock(orderId);
+  }
+
+  const { error } = await supabase.from("orders").delete().eq("id", orderId);
+  if (error) return { error: error.message };
+
   revalidatePath("/admin/orders");
   return { success: true };
 }
@@ -223,17 +359,136 @@ export async function saveSettings(formData: FormData) {
   return { success: true };
 }
 
-export async function saveContentPage(
-  pageKey: "about" | "faq",
-  content: string
+async function revalidateProductStorefront(productId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("products")
+    .select("slug")
+    .eq("id", productId)
+    .single();
+  revalidatePath(`/admin/products/${productId}`);
+  revalidatePath("/shop");
+  if (data?.slug) {
+    revalidatePath(`/products/${data.slug}`);
+  }
+}
+
+export async function saveProductVariant(
+  productId: string,
+  variant: {
+    id?: string;
+    variant_label: string;
+    price: number;
+    compare_at_price?: number | null;
+    stock_quantity: number;
+    sku?: string | null;
+  }
 ) {
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("content_pages")
-    .update({ content })
-    .eq("page_key", pageKey);
+
+  if (!variant.variant_label.trim()) {
+    return { error: "Variant label is required." };
+  }
+
+  const variantData = {
+    product_id: productId,
+    variant_label: variant.variant_label.trim(),
+    price: variant.price,
+    compare_at_price: variant.compare_at_price || null,
+    stock_quantity: variant.stock_quantity,
+    stock_status:
+      variant.stock_quantity > 0 ? ("in_stock" as const) : ("out_of_stock" as const),
+    sku: variant.sku?.trim() || null,
+  };
+
+  if (variant.id) {
+    const { data, error } = await supabase
+      .from("product_variants")
+      .update(variantData)
+      .eq("id", variant.id)
+      .eq("product_id", productId)
+      .select("*")
+      .single();
+    if (error) return { error: error.message };
+    await revalidateProductStorefront(productId);
+    return { success: true, variant: data };
+  }
+
+  const { data, error } = await supabase
+    .from("product_variants")
+    .insert(variantData)
+    .select("*")
+    .single();
   if (error) return { error: error.message };
-  revalidatePath(`/${pageKey}`);
+  await revalidateProductStorefront(productId);
+  return { success: true, variant: data };
+}
+
+export async function deleteProductVariant(productId: string, variantId: string) {
+  const supabase = await createClient();
+
+  await supabase
+    .from("order_items")
+    .update({ product_variant_id: null })
+    .eq("product_variant_id", variantId);
+
+  const { error } = await supabase
+    .from("product_variants")
+    .delete()
+    .eq("id", variantId)
+    .eq("product_id", productId);
+
+  if (error) {
+    if (error.message.includes("violates foreign key")) {
+      return {
+        error:
+          "Run supabase/order_items_variant_nullable.sql in Supabase, then try again.",
+      };
+    }
+    return { error: error.message };
+  }
+  await revalidateProductStorefront(productId);
+  return { success: true };
+}
+
+export async function setProductVariantStock(
+  productId: string,
+  variantId: string,
+  stockQuantity: number
+) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("product_variants")
+    .update({
+      stock_quantity: stockQuantity,
+      stock_status: stockQuantity > 0 ? "in_stock" : "out_of_stock",
+    })
+    .eq("id", variantId)
+    .eq("product_id", productId)
+    .select("*")
+    .single();
+
+  if (error) return { error: error.message };
+  await revalidateProductStorefront(productId);
+  return { success: true, variant: data };
+}
+
+export async function reorderProductImages(productId: string, imageIds: string[]) {
+  const supabase = await createClient();
+
+  const updates = imageIds.map((id, index) =>
+    supabase
+      .from("product_images")
+      .update({ sort_order: index })
+      .eq("id", id)
+      .eq("product_id", productId)
+  );
+
+  const results = await Promise.all(updates);
+  const failed = results.find((r) => r.error);
+  if (failed?.error) return { error: failed.error.message };
+
+  await revalidateProductStorefront(productId);
   return { success: true };
 }
 
@@ -274,17 +529,28 @@ export async function uploadProductImage(
   });
 
   if (error) return { error: error.message };
-  revalidatePath("/", "layout");
-  revalidatePath("/shop", "page");
-  revalidatePath(`/admin/products/${productId}`);
-  return { success: true, url: publicUrl };
+
+  const { data: image } = await supabase
+    .from("product_images")
+    .select("*")
+    .eq("product_id", productId)
+    .eq("image_url", publicUrl)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  await revalidateProductStorefront(productId);
+  return { success: true, url: publicUrl, image };
 }
 
 export async function deleteProductImage(imageId: string, productId: string) {
   const supabase = await createClient();
-  await supabase.from("product_images").delete().eq("id", imageId);
-  revalidatePath("/", "layout");
-  revalidatePath("/shop", "page");
-  revalidatePath(`/admin/products/${productId}`);
+  const { error } = await supabase
+    .from("product_images")
+    .delete()
+    .eq("id", imageId)
+    .eq("product_id", productId);
+  if (error) return { error: error.message };
+  await revalidateProductStorefront(productId);
   return { success: true };
 }

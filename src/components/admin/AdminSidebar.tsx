@@ -8,7 +8,6 @@ import {
   Package,
   FolderTree,
   ShoppingCart,
-  FileText,
   MessageSquare,
   Settings,
   Wallet,
@@ -24,7 +23,6 @@ const links = [
   { href: "/admin/expenses", label: "Expenses", icon: Wallet },
   { href: "/admin/reports", label: "Reports", icon: BarChart3 },
   { href: "/admin/reviews", label: "Reviews", icon: MessageSquare },
-  { href: "/admin/content", label: "Content", icon: FileText },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 

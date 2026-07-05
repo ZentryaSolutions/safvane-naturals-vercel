@@ -144,7 +144,7 @@ CREATE TABLE orders (
 CREATE TABLE order_items (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-  product_variant_id UUID NOT NULL REFERENCES product_variants(id) ON DELETE RESTRICT,
+  product_variant_id UUID REFERENCES product_variants(id) ON DELETE SET NULL,
   product_name_snapshot TEXT NOT NULL,
   variant_label_snapshot TEXT NOT NULL,
   unit_price_snapshot NUMERIC(10, 2) NOT NULL,

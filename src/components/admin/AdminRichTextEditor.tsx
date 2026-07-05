@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "jodit/es2021/jodit.min.css";
 
 const JoditEditor = dynamic(() => import("jodit-react"), { ssr: false });
@@ -19,6 +19,47 @@ export function AdminRichTextEditor({
   placeholder,
   minHeight = 420,
 }: AdminRichTextEditorProps) {
+  const [editorValue, setEditorValue] = useState(value);
+  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setEditorValue(value);
+  }, [value]);
+
+  const scheduleParentSync = useCallback(
+    (content: string) => {
+      if (syncTimer.current) clearTimeout(syncTimer.current);
+      syncTimer.current = setTimeout(() => onChange(content), 200);
+    },
+    [onChange]
+  );
+
+  const handleChange = useCallback(
+    (content: string) => {
+      setEditorValue(content);
+      scheduleParentSync(content);
+    },
+    [scheduleParentSync]
+  );
+
+  const handleBlur = useCallback(
+    (content: string) => {
+      if (syncTimer.current) {
+        clearTimeout(syncTimer.current);
+        syncTimer.current = null;
+      }
+      setEditorValue(content);
+      onChange(content);
+    },
+    [onChange]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (syncTimer.current) clearTimeout(syncTimer.current);
+    };
+  }, []);
+
   const config = useMemo(
     () => ({
       readonly: false,
@@ -32,6 +73,7 @@ export function AdminRichTextEditor({
       askBeforePasteHTML: false,
       askBeforePasteFromWord: false,
       defaultActionOnPaste: "insert_as_html" as const,
+      enter: "p" as const,
       buttons: [
         "bold",
         "italic",
@@ -78,10 +120,10 @@ export function AdminRichTextEditor({
   return (
     <div className="admin-rich-text-editor">
       <JoditEditor
-        value={value}
+        value={editorValue}
         config={config}
-        onBlur={(content) => onChange(content)}
-        onChange={(content) => onChange(content)}
+        onBlur={handleBlur}
+        onChange={handleChange}
       />
     </div>
   );

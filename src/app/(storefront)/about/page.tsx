@@ -1,10 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { RichTextContent } from "@/components/storefront/RichTextContent";
 import { Reveal } from "@/components/ui/Reveal";
+import {
+  ABOUT_COMMITMENTS,
+  ABOUT_STORY,
+  COMPANY_FACTS,
+} from "@/lib/about-content";
 import { CONTACT, HERO_BANNER_IMAGE } from "@/lib/constants";
-import { getContentPage } from "@/lib/data";
 import { buildPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildPageMetadata({
@@ -34,15 +37,13 @@ const VALUES = [
 ];
 
 const PROCESS = [
-  { step: "01", title: "Source", text: "Premium seeds selected for purity and potency." },
-  { step: "02", title: "Cold Press", text: "Slow-pressed without heat to preserve nutrients." },
+  { step: "01", title: "Source", text: "Premium black seeds selected for purity and potency." },
+  { step: "02", title: "Cold Press", text: "Slow-pressed without heat to preserve natural nutrients." },
   { step: "03", title: "Filter & Bottle", text: "Naturally settled, bottled in protective amber glass." },
   { step: "04", title: "Deliver", text: "Shipped across Pakistan — pay on delivery, no risk." },
 ];
 
-export default async function AboutPage() {
-  const page = await getContentPage("about");
-
+export default function AboutPage() {
   return (
     <div className="about-page">
       <section className="about-hero">
@@ -59,10 +60,10 @@ export default async function AboutPage() {
           </Reveal>
           <Reveal delay={2}>
             <p className="about-hero-lead">
-              <strong>Safvane Naturals Pvt. Ltd.</strong> is a Pakistan-based wellness
-              brand (CUIN {CONTACT.cuin}) crafting cold-pressed, chemical-free natural
-              oils — starting with our signature black seed oil and expanding into a
-              full range of pure botanical products.
+              <strong>{CONTACT.company}</strong> (CUIN {CONTACT.cuin}) is a Pakistan-based
+              wellness brand crafting cold-pressed, chemical-free natural oils — starting
+              with our signature black seed oil and growing into a full range of pure
+              botanical products.
             </p>
           </Reveal>
           <Reveal delay={3}>
@@ -112,36 +113,33 @@ export default async function AboutPage() {
             </div>
           </Reveal>
           <div className="about-story-body prose-dark">
-            {page?.content ? (
-              <RichTextContent content={page.content} />
-            ) : (
-              <>
-                <Reveal delay={1}>
-                  <p>
-                    <strong>Safvane Naturals Pvt. Ltd.</strong> was incorporated in
-                    Pakistan under CUIN {CONTACT.cuin}, with our operations based in
-                    Attock. We are building a trusted name in natural wellness — oils
-                    that are cold-pressed, unrefined, and free from additives,
-                    preservatives, and synthetic fillers.
-                  </p>
-                </Reveal>
-                <Reveal delay={2}>
-                  <p>
-                    Every bottle reflects our promise: label transparency, small-batch
-                    quality, and nationwide delivery with cash on delivery. From sourcing
-                    premium seeds to amber-glass packaging, we control each step so
-                    families across Pakistan receive products they can trust.
-                  </p>
-                </Reveal>
-                <Reveal delay={3}>
-                  <p>
-                    Safvane Naturals is more than a product line — it is our commitment
-                    to honest natural wellness, made in Pakistan for Pakistan.
-                  </p>
-                </Reveal>
-              </>
-            )}
+            {ABOUT_STORY.map((paragraph, i) => (
+              <Reveal key={paragraph.slice(0, 40)} delay={((i % 3) + 1) as 1 | 2 | 3}>
+                <p>{paragraph}</p>
+              </Reveal>
+            ))}
           </div>
+        </div>
+      </section>
+
+      <section className="about-commitments">
+        <Reveal>
+          <header className="about-section-head">
+            <span className="about-eyebrow">Our promise</span>
+            <h2>
+              What you can <em>always</em> expect from us
+            </h2>
+          </header>
+        </Reveal>
+        <div className="about-commitments-grid">
+          {ABOUT_COMMITMENTS.map((item, i) => (
+            <Reveal key={item.title} delay={(i % 4) as 1 | 2 | 3 | 4}>
+              <article className="about-commitment-card">
+                <h3>{item.title}</h3>
+                <p>{item.text}</p>
+              </article>
+            </Reveal>
+          ))}
         </div>
       </section>
 
@@ -149,7 +147,9 @@ export default async function AboutPage() {
         <Reveal>
           <header className="about-section-head">
             <span className="about-eyebrow">Our Process</span>
-            <h2>From seed to <em>your doorstep</em></h2>
+            <h2>
+              From seed to <em>your doorstep</em>
+            </h2>
           </header>
         </Reveal>
         <div className="about-process-grid">
@@ -163,6 +163,27 @@ export default async function AboutPage() {
             </Reveal>
           ))}
         </div>
+      </section>
+
+      <section className="about-company">
+        <Reveal>
+          <header className="about-section-head">
+            <span className="about-eyebrow">Company</span>
+            <h2>
+              Registered, transparent, <em>reachable</em>
+            </h2>
+          </header>
+        </Reveal>
+        <dl className="about-company-facts">
+          {COMPANY_FACTS.map((fact, i) => (
+            <Reveal key={fact.label} delay={(i % 4) as 1 | 2 | 3 | 4}>
+              <div className="about-company-fact">
+                <dt>{fact.label}</dt>
+                <dd>{fact.value}</dd>
+              </div>
+            </Reveal>
+          ))}
+        </dl>
       </section>
 
       <section className="about-stats-bar">
@@ -189,10 +210,17 @@ export default async function AboutPage() {
       <Reveal>
         <section className="about-cta">
           <h2>Ready to experience the difference?</h2>
-          <p>Premium natural oils — delivered to your door. Pay only when it arrives.</p>
-          <Link href="/shop" className="btn">
-            <span>Shop Now</span>
-          </Link>
+          <p>
+            Premium natural oils — delivered to your door. Pay only when it arrives.
+          </p>
+          <div className="about-hero-actions" style={{ justifyContent: "center" }}>
+            <Link href="/shop" className="btn">
+              <span>Shop Now</span>
+            </Link>
+            <Link href="/faq" className="btn-ghost">
+              Read FAQ
+            </Link>
+          </div>
         </section>
       </Reveal>
     </div>

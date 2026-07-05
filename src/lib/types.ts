@@ -129,7 +129,7 @@ export interface Order {
 export interface OrderItem {
   id: string;
   order_id: string;
-  product_variant_id: string;
+  product_variant_id: string | null;
   product_name_snapshot: string;
   variant_label_snapshot: string;
   unit_price_snapshot: number;

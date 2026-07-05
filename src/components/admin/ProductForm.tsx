@@ -3,17 +3,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
-import { saveProduct, deleteProduct, uploadProductImage, deleteProductImage } from "@/app/admin/actions";
+import { saveProduct, deleteProduct } from "@/app/admin/actions";
 import { slugify } from "@/lib/utils";
-import { PRODUCT_IMAGE_GUIDE } from "@/lib/constants";
 import { formatBenefitsForEditor } from "@/lib/rich-content";
 import type { Category, Product, ProductImage, ProductVariant } from "@/lib/types";
-import { generateVariantSku } from "@/lib/sku";
 import type { ProductEditSection } from "@/components/admin/ProductEditWorkspace";
 import { AdminRichTextEditor } from "@/components/admin/AdminRichTextEditor";
+import { ProductVariantsEditor } from "@/components/admin/ProductVariantsEditor";
+import { ProductImagesEditor } from "@/components/admin/ProductImagesEditor";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
-import { Trash2, Upload } from "lucide-react";
+import { Trash2 } from "lucide-react";
 
 function toDatetimeLocal(iso: string | null | undefined) {
   if (!iso) return "";
@@ -101,14 +100,8 @@ export function ProductForm({
   const { showToast } = useAdminToast();
   const [name, setName] = useState(product?.name ?? "");
   const [slug, setSlug] = useState(product?.slug ?? "");
-  const [variants, setVariants] = useState(
-    product?.variants?.length
-      ? product.variants
-      : [{ variant_label: "50ml", price: 0, stock_quantity: 0 } as Partial<ProductVariant>]
-  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [images, setImages] = useState(product?.images ?? []);
   const [contentTab, setContentTab] = useState<ContentTab>("description");
   const [useShopShipping, setUseShopShipping] = useState(
     product?.use_shop_shipping ?? true
@@ -129,23 +122,6 @@ export function ProductForm({
     if (!product) setSlug(slugify(val));
   };
 
-  const addVariant = () => {
-    setVariants([
-      ...variants,
-      { variant_label: "", price: 0, stock_quantity: 0 } as Partial<ProductVariant>,
-    ]);
-  };
-
-  const removeVariant = (i: number) => {
-    setVariants(variants.filter((_, idx) => idx !== i));
-  };
-
-  const updateVariant = (i: number, field: string, value: string | number) => {
-    setVariants(
-      variants.map((v, idx) => (idx === i ? { ...v, [field]: value } : v))
-    );
-  };
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSaving(true);
@@ -153,7 +129,6 @@ export function ProductForm({
     setError("");
 
     const form = new FormData(e.currentTarget);
-    form.set("variants", JSON.stringify(variants));
     form.set("description", contentFields.description);
     form.set("how_to_use", contentFields.how_to_use);
     form.set("ingredients", contentFields.ingredients);
@@ -205,26 +180,6 @@ export function ProductForm({
     }
     setSaving(false);
     onSavingChange?.(false);
-  };
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!product?.id || !e.target.files?.[0]) return;
-    const fd = new FormData();
-    fd.set("file", e.target.files[0]);
-    const result = await uploadProductImage(product.id, fd);
-    if (result.error) showToast("error", result.error);
-    else {
-      showToast("success", "Image uploaded");
-      router.refresh();
-    }
-  };
-
-  const handleDeleteImage = async (imageId: string) => {
-    if (!product?.id) return;
-    await deleteProductImage(imageId, product.id);
-    setImages(images.filter((i) => i.id !== imageId));
-    showToast("success", "Image removed");
-    router.refresh();
   };
 
   const handleDelete = async () => {
@@ -361,100 +316,19 @@ export function ProductForm({
       </Section>
 
       <Section id="variants" activeSection={activeSection} workspaceMode={workspaceMode}>
-        <div className="admin-card admin-product-card">
-          <div className="admin-product-card-head">
-            <p className="admin-field-hint" style={{ margin: 0 }}>
-              SKU is the scannable barcode value (e.g. SFV-BLACKSEED-100ML). Use Packaging →
-              Barcodes to download PNGs after saving.
+        {product ? (
+          <ProductVariantsEditor
+            productId={product.id}
+            productSlug={slug || product.slug}
+            initialVariants={product.variants ?? []}
+          />
+        ) : (
+          <div className="admin-card admin-product-card">
+            <p className="admin-field-hint">
+              Save the product basics first, then add variants &amp; SKUs.
             </p>
-            <button
-              type="button"
-              onClick={addVariant}
-              className="admin-btn-ghost"
-              style={{ padding: "6px 12px", fontSize: "0.8125rem", flexShrink: 0 }}
-            >
-              + Add variant
-            </button>
           </div>
-
-          <div className="admin-variants-table">
-            <div className="admin-variants-table-head">
-              <span>Label</span>
-              <span>Price (PKR)</span>
-              <span>Compare at</span>
-              <span>Stock</span>
-              <span>SKU / barcode</span>
-              <span />
-            </div>
-            {variants.map((v, i) => (
-              <div key={v.id ?? `new-${i}`} className="admin-variants-table-row">
-                <input
-                  placeholder="100ml"
-                  value={v.variant_label}
-                  onChange={(e) => updateVariant(i, "variant_label", e.target.value)}
-                />
-                <input
-                  type="number"
-                  placeholder="0"
-                  value={v.price}
-                  onChange={(e) => updateVariant(i, "price", parseFloat(e.target.value) || 0)}
-                />
-                <input
-                  type="number"
-                  placeholder="—"
-                  value={v.compare_at_price ?? ""}
-                  onChange={(e) =>
-                    updateVariant(
-                      i,
-                      "compare_at_price",
-                      e.target.value ? parseFloat(e.target.value) : 0
-                    )
-                  }
-                />
-                <input
-                  type="number"
-                  placeholder="0"
-                  value={v.stock_quantity}
-                  onChange={(e) =>
-                    updateVariant(i, "stock_quantity", parseInt(e.target.value) || 0)
-                  }
-                />
-                <div className="admin-variant-sku-cell">
-                  <input
-                    placeholder="SFV-PRODUCT-100ML"
-                    value={v.sku ?? ""}
-                    onChange={(e) => updateVariant(i, "sku", e.target.value.toUpperCase())}
-                  />
-                  <button
-                    type="button"
-                    className="admin-btn-ghost admin-variant-suggest"
-                    onClick={() =>
-                      updateVariant(
-                        i,
-                        "sku",
-                        generateVariantSku(slug || "product", v.variant_label || "std")
-                      )
-                    }
-                  >
-                    Suggest
-                  </button>
-                </div>
-                {variants.length > 1 ? (
-                  <button
-                    type="button"
-                    onClick={() => removeVariant(i)}
-                    className="admin-btn-danger admin-variant-delete"
-                    title="Remove variant"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                ) : (
-                  <span />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+        )}
       </Section>
 
       <Section id="offers" activeSection={activeSection} workspaceMode={workspaceMode}>
@@ -546,39 +420,10 @@ export function ProductForm({
 
       {product && (
         <Section id="images" activeSection={activeSection} workspaceMode={workspaceMode}>
-          <div className="admin-card admin-product-card">
-            <div className="admin-image-guide">
-              <strong>Recommended:</strong> {PRODUCT_IMAGE_GUIDE.width}×
-              {PRODUCT_IMAGE_GUIDE.height}px ({PRODUCT_IMAGE_GUIDE.ratio}) ·{" "}
-              {PRODUCT_IMAGE_GUIDE.formats}
-              <br />
-              {PRODUCT_IMAGE_GUIDE.tip}
-            </div>
-            <div className="admin-image-grid admin-product-image-grid">
-              {(product.images ?? images).map((img) => (
-                <div key={img.id} className="admin-image-thumb admin-product-image-thumb">
-                  <Image
-                    src={img.image_url}
-                    alt=""
-                    fill
-                    style={{ objectFit: "contain", padding: 8, background: "#f8f8f8" }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteImage(img.id)}
-                    className="admin-image-delete"
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </div>
-              ))}
-            </div>
-            <label className="admin-upload-label">
-              <Upload size={16} />
-              Upload image
-              <input type="file" accept="image/*" onChange={handleImageUpload} hidden />
-            </label>
-          </div>
+          <ProductImagesEditor
+            productId={product.id}
+            initialImages={product.images ?? []}
+          />
         </Section>
       )}
 

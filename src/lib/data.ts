@@ -2,7 +2,6 @@ import { unstable_noStore as noStore } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
 import type {
   Category,
-  ContentPage,
   ProductReview,
   ProductReviewSummary,
   ProductVariant,
@@ -102,20 +101,6 @@ export async function getProductBySlug(
   }
 
   return enrichProduct(data as ProductWithDetails);
-}
-
-export async function getContentPage(
-  pageKey: "about" | "faq"
-): Promise<ContentPage | null> {
-  noStore();
-  const supabase = createPublicClient();
-  const { data, error } = await supabase
-    .from("content_pages")
-    .select("*")
-    .eq("page_key", pageKey)
-    .single();
-  if (error) console.error("getContentPage:", error.message);
-  return data;
 }
 
 function enrichProduct(product: ProductWithDetails): ProductWithDetails {

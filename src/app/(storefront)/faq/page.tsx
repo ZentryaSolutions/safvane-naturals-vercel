@@ -42,7 +42,10 @@ export default function FAQPage() {
           <h1>
             <em>Frequently</em> Asked Questions
           </h1>
-          <p>Clear answers about ordering, products, delivery, and returns.</p>
+          <p>
+            Everything you need to know about ordering, our products, delivery,
+            quality, and support — in one place.
+          </p>
         </Reveal>
       </section>
 
