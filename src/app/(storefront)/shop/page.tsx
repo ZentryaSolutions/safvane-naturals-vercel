@@ -1,5 +1,7 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { getCategories, getProducts } from "@/lib/data";
+import { buildPageMetadata } from "@/lib/seo";
 import { ShopProductCard } from "@/components/storefront/ShopProductCard";
 import { Reveal } from "@/components/ui/Reveal";
 
@@ -7,9 +9,24 @@ interface ShopPageProps {
   searchParams: Promise<{ category?: string }>;
 }
 
-export const metadata = {
-  title: "Shop",
-};
+export async function generateMetadata({
+  searchParams,
+}: ShopPageProps): Promise<Metadata> {
+  const { category: categorySlug } = await searchParams;
+  if (categorySlug) {
+    return buildPageMetadata({
+      title: `Shop ${categorySlug.replace(/-/g, " ")} — Natural Oils`,
+      description: `Browse Safvane Naturals ${categorySlug.replace(/-/g, " ")}. Cold-pressed, pure, chemical-free oils with cash on delivery across Pakistan.`,
+      path: `/shop?category=${categorySlug}`,
+    });
+  }
+  return buildPageMetadata({
+    title: "Shop Pure Cold-Pressed Natural Oils",
+    description:
+      "Browse Safvane Naturals collection — premium cold-pressed black seed oil and natural wellness products. COD delivery nationwide.",
+    path: "/shop",
+  });
+}
 
 export default async function ShopPage({ searchParams }: ShopPageProps) {
   const { category: categorySlug } = await searchParams;

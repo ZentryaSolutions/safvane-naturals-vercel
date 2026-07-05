@@ -1,8 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
+import type { Metadata } from "next";
 import {
   getProducts,
 } from "@/lib/data";
+import { buildPageMetadata } from "@/lib/seo";
 import { Marquee } from "@/components/ui/Marquee";
 import { HeroParticles } from "@/components/ui/HeroParticles";
 import { Reveal } from "@/components/ui/Reveal";
@@ -11,6 +13,14 @@ import {
 } from "@/components/storefront/ShopProductCard";
 import { Testimonials } from "@/components/storefront/Testimonials";
 import { HERO_BANNER_IMAGE } from "@/lib/constants";
+
+export const metadata: Metadata = buildPageMetadata({
+  title: "Premium Cold-Pressed Black Seed Oil Pakistan",
+  description:
+    "Shop Safvane Naturals — 100% pure cold-pressed kalonji (black seed) oil. Chemical-free, small-batch, amber glass. Nationwide COD delivery across Pakistan.",
+  path: "/",
+  image: HERO_BANNER_IMAGE,
+});
 
 export default async function HomePage() {
   const allProducts = await getProducts();

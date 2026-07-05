@@ -6,7 +6,7 @@ export const BRAND = {
 } as const;
 
 /** Public website — used on printed box labels (QR code) and links. */
-export const WEBSITE_URL = "https://safvane.com";
+export const WEBSITE_URL = "https://www.safvane.com";
 
 export const CONTACT = {
   email: "info@safvane.com",

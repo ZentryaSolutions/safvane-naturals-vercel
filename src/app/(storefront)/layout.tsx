@@ -2,9 +2,15 @@ import { SafvaneNav } from "@/components/layout/SafvaneNav";
 import { SafvaneFooter } from "@/components/layout/SafvaneFooter";
 import { WhatsAppFloat } from "@/components/layout/WhatsAppFloat";
 import { PromoBanner } from "@/components/storefront/PromoBanner";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { CartProvider } from "@/context/CartContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { getSiteSettings } from "@/lib/data";
+import {
+  localBusinessJsonLd,
+  organizationJsonLd,
+  websiteJsonLd,
+} from "@/lib/seo";
 import "@/styles/safvane.css";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +26,13 @@ export default async function StorefrontLayout({
   return (
     <ThemeProvider>
       <CartProvider>
+        <JsonLd
+          data={[
+            organizationJsonLd(),
+            websiteJsonLd(),
+            localBusinessJsonLd(),
+          ]}
+        />
         <SafvaneNav />
         <PromoBanner settings={settings} />
         <main className="storefront-main">{children}</main>

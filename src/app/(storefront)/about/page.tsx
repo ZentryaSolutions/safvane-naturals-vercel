@@ -1,11 +1,18 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { RichTextContent } from "@/components/storefront/RichTextContent";
 import { Reveal } from "@/components/ui/Reveal";
 import { CONTACT, HERO_BANNER_IMAGE } from "@/lib/constants";
 import { getContentPage } from "@/lib/data";
+import { buildPageMetadata } from "@/lib/seo";
 
-export const metadata = { title: "About" };
+export const metadata: Metadata = buildPageMetadata({
+  title: "About Safvane Naturals Pvt. Ltd.",
+  description:
+    "Safvane Naturals Pvt. Ltd. — Pakistan's premium cold-pressed black seed oil brand. Incorporated in Attock (CUIN 0343184). Pure, transparent, small-batch natural wellness.",
+  path: "/about",
+});
 
 const VALUES = [
   {

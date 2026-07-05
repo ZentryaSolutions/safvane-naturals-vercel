@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Fraunces, Inter, Space_Mono } from "next/font/google";
-import { BRAND } from "@/lib/constants";
+import { DEFAULT_SITE_METADATA } from "@/lib/seo";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -21,17 +21,7 @@ const spaceMono = Space_Mono({
   weight: ["400", "700"],
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: `${BRAND.name} — Pure. Cold Pressed. Unrefined.`,
-    template: `%s | ${BRAND.name}`,
-  },
-  description: BRAND.description,
-  icons: {
-    icon: [{ url: "/icons/safvane-icon.png", type: "image/png" }],
-    apple: [{ url: "/icons/safvane-icon.png", type: "image/png" }],
-  },
-};
+export const metadata: Metadata = DEFAULT_SITE_METADATA;
 
 export default function RootLayout({
   children,
@@ -40,10 +30,13 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="en-PK"
       className={`${fraunces.variable} ${inter.variable} ${spaceMono.variable} h-full`}
       suppressHydrationWarning
     >
+      <head>
+        <link rel="alternate" type="text/plain" href="/llms.txt" title="LLM Information" />
+      </head>
       <body className="min-h-full antialiased" suppressHydrationWarning>
         {children}
       </body>

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ContactForm } from "@/components/storefront/ContactForm";
 import { getSiteSettings } from "@/lib/data";
 import { getWhatsAppLink } from "@/lib/utils";
@@ -8,9 +9,15 @@ import {
   WHATSAPP_DEFAULT_MESSAGE,
   WHATSAPP_NUMBER,
 } from "@/lib/constants";
+import { buildPageMetadata } from "@/lib/seo";
 import { Reveal } from "@/components/ui/Reveal";
 
-export const metadata = { title: "Contact" };
+export const metadata: Metadata = buildPageMetadata({
+  title: "Contact Safvane Naturals",
+  description:
+    "Contact Safvane Naturals — WhatsApp +92 371 2456245, email info@safvane.com. Attock, Pakistan. Questions about black seed oil, orders, or delivery.",
+  path: "/contact",
+});
 
 export default async function ContactPage() {
   const settings = await getSiteSettings();
