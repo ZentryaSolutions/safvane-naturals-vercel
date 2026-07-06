@@ -12,12 +12,20 @@ import {
   X,
 } from "lucide-react";
 import { deleteOrder, updateOrder } from "@/app/admin/actions";
+import { OrderCommunicationsPanel } from "@/components/admin/OrderCommunicationsPanel";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
 import type { Order, OrderItem, OrderStatus } from "@/lib/types";
 import { formatPrice } from "@/lib/utils";
 
 interface OrderDetailClientProps {
   order: Order & { items: OrderItem[] };
+  communications?: Array<{
+    id: string;
+    channel: string;
+    template_id: string;
+    recipient: string | null;
+    created_at: string;
+  }>;
 }
 
 const STATUS_OPTIONS: OrderStatus[] = [
@@ -40,7 +48,10 @@ function formatDateTime(iso: string) {
   });
 }
 
-export function OrderDetailClient({ order: initialOrder }: OrderDetailClientProps) {
+export function OrderDetailClient({
+  order: initialOrder,
+  communications = [],
+}: OrderDetailClientProps) {
   const router = useRouter();
   const { showToast } = useAdminToast();
   const [order, setOrder] = useState(initialOrder);
@@ -442,6 +453,11 @@ export function OrderDetailClient({ order: initialOrder }: OrderDetailClientProp
             shipping above if needed.
           </p>
         </section>
+
+        <OrderCommunicationsPanel
+          order={order}
+          communications={communications}
+        />
 
         <section className="admin-card admin-order-section admin-order-danger-zone">
           <h2 className="admin-section-title admin-order-danger-title">

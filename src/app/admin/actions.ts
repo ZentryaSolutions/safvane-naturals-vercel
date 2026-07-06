@@ -324,6 +324,75 @@ export async function deleteOrder(orderId: string, confirmOrderNumber: string) {
   return { success: true };
 }
 
+export async function sendOrderTemplateEmailAction(
+  orderId: string,
+  templateId: string,
+  custom?: { subject?: string; body?: string }
+) {
+  const supabase = await createClient();
+
+  const { data: order, error } = await supabase
+    .from("orders")
+    .select(`*, items:order_items(*)`)
+    .eq("id", orderId)
+    .single();
+
+  if (error || !order) {
+    return { error: error?.message ?? "Order not found" };
+  }
+
+  const { sendOrderTemplateEmail } = await import("@/lib/order-emails");
+  const { logOrderCommunication } = await import("@/lib/notifications");
+  const result = await sendOrderTemplateEmail(
+    order,
+    templateId as import("@/lib/order-templates").OrderTemplateId,
+    {
+      subject: custom?.subject,
+      text: custom?.body,
+    }
+  );
+
+  if ("error" in result && result.error) {
+    return { error: result.error };
+  }
+
+  await logOrderCommunication(
+    orderId,
+    "email",
+    templateId,
+    result.recipient
+  );
+
+  revalidatePath(`/admin/orders/${orderId}`);
+  return { success: true, recipient: result.recipient };
+}
+
+export async function logWhatsAppTemplateSend(
+  orderId: string,
+  templateId: string,
+  recipient: string
+) {
+  const { logOrderCommunication } = await import("@/lib/notifications");
+  await logOrderCommunication(orderId, "whatsapp", templateId, recipient);
+  revalidatePath(`/admin/orders/${orderId}`);
+  return { success: true };
+}
+
+export async function getOrderCommunications(orderId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("order_communications")
+    .select("*")
+    .eq("order_id", orderId)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (error) {
+    return [];
+  }
+  return data ?? [];
+}
+
 export async function saveSettings(formData: FormData) {
   const supabase = await createClient();
   const promoEndsRaw = (formData.get("promo_ends_at") as string)?.trim();

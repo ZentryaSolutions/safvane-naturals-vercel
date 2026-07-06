@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { ShieldCheck, Truck, User, MapPin, FileText } from "lucide-react";
+import { ShieldCheck, Truck, User, MapPin, FileText, Loader2 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useSyncedCartShipping } from "@/hooks/useSyncedCartShipping";
 import { formatPrice } from "@/lib/utils";
@@ -22,12 +22,14 @@ type ShippingSettings = Pick<
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, subtotal, stockIssues, clearCart } = useCart();
+  const { items, subtotal, stockIssues } = useCart();
   const shippingItems = useSyncedCartShipping(items);
   const [shippingSettings, setShippingSettings] = useState<ShippingSettings | null>(null);
   const [loading, setLoading] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [formError, setFormError] = useState("");
+  const placingOrder = useRef(false);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -41,8 +43,9 @@ export default function CheckoutPage() {
   const [area, setArea] = useState("");
 
   useEffect(() => {
+    if (redirecting || placingOrder.current) return;
     if (items.length === 0) router.replace("/cart");
-  }, [items.length, router]);
+  }, [items.length, router, redirecting]);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -60,6 +63,7 @@ export default function CheckoutPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (hasStockIssues) return;
+    placingOrder.current = true;
     setLoading(true);
     setErrors({});
     setFormError("");
@@ -94,6 +98,7 @@ export default function CheckoutPage() {
       const data = await res.json();
 
       if (!res.ok) {
+        placingOrder.current = false;
         if (data.error && typeof data.error === "object") {
           setErrors(data.error);
         } else {
@@ -103,18 +108,22 @@ export default function CheckoutPage() {
         return;
       }
 
-      clearCart();
+      setRedirecting(true);
       if (data.whatsappUrl) {
         sessionStorage.setItem("safvane-wa-url", data.whatsappUrl);
       }
+      if (payload.customer_email?.trim()) {
+        sessionStorage.setItem("safvane-order-email", payload.customer_email);
+      }
       router.replace(`/order-confirmation/${data.orderNumber}`);
     } catch {
+      placingOrder.current = false;
       setFormError("Something went wrong. Please try again.");
       setLoading(false);
     }
   };
 
-  if (items.length === 0) return null;
+  if (!redirecting && items.length === 0) return null;
 
   return (
     <div className="checkout-page">
@@ -133,6 +142,12 @@ export default function CheckoutPage() {
         <div className="checkout-wrap">
           <div className="checkout-l">
             <form onSubmit={handleSubmit} className="checkout-form">
+              {hasStockIssues && (
+                <div className="stock-warn">
+                  Some items have stock issues. Please update your cart before
+                  placing an order.
+                </div>
+              )}
               {formError && <div className="stock-warn">{formError}</div>}
 
               <section className="checkout-card">
@@ -172,8 +187,13 @@ export default function CheckoutPage() {
                       onChange={(e) =>
                         setForm({ ...form, customer_email: e.target.value })
                       }
-                      placeholder="optional"
+                      placeholder="For order confirmation"
                     />
+                    {errors.customer_email && (
+                      <span className="field-error">
+                        {errors.customer_email[0]}
+                      </span>
+                    )}
                   </div>
                   <div className="fg">
                     <label htmlFor="phone">Phone Number *</label>
@@ -269,10 +289,12 @@ export default function CheckoutPage() {
               <button
                 type="submit"
                 className="btn checkout-submit-btn"
-                disabled={loading || hasStockIssues}
+                disabled={loading || hasStockIssues || redirecting}
               >
                 <span>
-                  {loading ? "Placing Order..." : "Place Order (Cash on Delivery)"}
+                  {loading || redirecting
+                    ? "Placing Order..."
+                    : "Place Order (Cash on Delivery)"}
                 </span>
               </button>
 
@@ -370,6 +392,16 @@ export default function CheckoutPage() {
           </aside>
         </div>
       </div>
+
+      {(loading || redirecting) && (
+        <div className="checkout-placing-overlay" role="status" aria-live="polite">
+          <div className="checkout-placing-card">
+            <Loader2 size={40} className="checkout-placing-spinner" aria-hidden />
+            <h2>Placing your order…</h2>
+            <p>Please wait — do not close this page.</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

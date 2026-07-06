@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { CheckCircle2, MessageCircle, Package, Truck } from "lucide-react";
+import {
+  CheckCircle2,
+  Mail,
+  MessageCircle,
+  Package,
+  Truck,
+} from "lucide-react";
+import { useCart } from "@/context/CartContext";
 import { formatPrice } from "@/lib/utils";
 import type { Order, OrderItem } from "@/lib/types";
 
@@ -15,7 +22,15 @@ export function OrderConfirmationView({
   order,
   orderNumber,
 }: OrderConfirmationViewProps) {
+  const { clearCart } = useCart();
   const [waUrl, setWaUrl] = useState<string | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
+
+  useEffect(() => {
+    if (order) {
+      clearCart();
+    }
+  }, [order, clearCart]);
 
   useEffect(() => {
     const url = sessionStorage.getItem("safvane-wa-url");
@@ -23,7 +38,12 @@ export function OrderConfirmationView({
       setWaUrl(url);
       sessionStorage.removeItem("safvane-wa-url");
     }
-  }, []);
+    const email = sessionStorage.getItem("safvane-order-email");
+    if (email && order?.customer_email) {
+      setEmailSent(true);
+      sessionStorage.removeItem("safvane-order-email");
+    }
+  }, [order]);
 
   if (!order) {
     return (
@@ -100,6 +120,19 @@ export function OrderConfirmationView({
             </p>
           </div>
         </div>
+        {(emailSent || order.customer_email) && (
+          <div className="order-confirm-step">
+            <Mail size={20} aria-hidden />
+            <div>
+              <strong>Confirmation email</strong>
+              <p>
+                {order.customer_email
+                  ? `We've sent order details to ${order.customer_email}. Check your inbox and spam folder.`
+                  : "Add your email next time for instant confirmation."}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {waUrl && (

@@ -1,11 +1,9 @@
 import { createServiceClient } from "@/lib/supabase/service";
+import { sendOrderTemplateEmail } from "@/lib/order-emails";
 import { getWhatsAppLink, normalizePakistaniPhone } from "@/lib/utils";
 import type { OrderWithItems } from "@/lib/types";
-import { Resend } from "resend";
 
-const resend = process.env.RESEND_API_KEY
-  ? new Resend(process.env.RESEND_API_KEY)
-  : null;
+const DEFAULT_ALERT_EMAIL = "orders@safvane.com";
 
 export async function sendOrderNotifications(order: OrderWithItems) {
   const supabase = createServiceClient();
@@ -15,43 +13,40 @@ export async function sendOrderNotifications(order: OrderWithItems) {
     .eq("id", 1)
     .single();
 
-  const itemsList = order.items
-    .map(
-      (i) =>
-        `• ${i.product_name_snapshot} (${i.variant_label_snapshot}) x${i.quantity} — Rs. ${i.unit_price_snapshot * i.quantity}`
-    )
-    .join("\n");
+  const results: {
+    adminEmail?: boolean;
+    customerEmail?: boolean;
+    whatsappUrl?: string;
+  } = {};
 
-  const emailBody = `
-New order ${order.order_number}
+  const alertEmail =
+    settings?.notification_email?.trim() || DEFAULT_ALERT_EMAIL;
 
-Customer: ${order.customer_name}
-Phone: ${order.customer_phone}
-${order.customer_email ? `Email: ${order.customer_email}` : ""}
-Address: ${order.delivery_address}, ${order.city}
-${order.order_note ? `Note: ${order.order_note}` : ""}
-
-Items:
-${itemsList}
-
-Subtotal: Rs. ${order.subtotal}
-Shipping: Rs. ${order.shipping_fee}
-Total: Rs. ${order.total}
-  `.trim();
-
-  const results: { email?: boolean; whatsappUrl?: string } = {};
-
-  if (settings?.notification_email && resend) {
-    try {
-      await resend.emails.send({
-        from: process.env.RESEND_FROM_EMAIL ?? "orders@safvane.com",
-        to: settings.notification_email,
-        subject: `New Order ${order.order_number} — Safvane Naturals`,
-        text: emailBody,
-      });
-      results.email = true;
-    } catch (e) {
-      console.error("Email notification failed:", e);
+  if (order.customer_email?.trim()) {
+    const customerResult = await sendOrderTemplateEmail(order, "confirmation", {
+      to: order.customer_email,
+      bcc: alertEmail,
+    });
+    if ("success" in customerResult && customerResult.success) {
+      results.customerEmail = true;
+      results.adminEmail = true;
+      await logOrderCommunication(
+        order.id,
+        "email",
+        "confirmation",
+        customerResult.recipient
+      );
+    } else if ("error" in customerResult) {
+      console.error("Customer confirmation email failed:", customerResult.error);
+    }
+  } else {
+    // No customer email — send the confirmation copy to the shop inbox only
+    const alertResult = await sendOrderTemplateEmail(order, "confirmation", {
+      to: alertEmail,
+      subject: `[New order] Order Confirmed — ${order.order_number} | Safvane Naturals`,
+    });
+    if ("success" in alertResult && alertResult.success) {
+      results.adminEmail = true;
     }
   }
 
@@ -64,4 +59,24 @@ Total: Rs. ${order.total}
   }
 
   return results;
+}
+
+export async function logOrderCommunication(
+  orderId: string,
+  channel: "email" | "whatsapp",
+  templateId: string,
+  recipient?: string
+) {
+  try {
+    const supabase = createServiceClient();
+    await supabase.from("order_communications").insert({
+      order_id: orderId,
+      channel,
+      template_id: templateId,
+      recipient: recipient ?? null,
+      status: "sent",
+    });
+  } catch (e) {
+    console.warn("Could not log order communication:", e);
+  }
 }

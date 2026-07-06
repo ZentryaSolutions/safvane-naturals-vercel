@@ -157,6 +157,10 @@ export function ProductDetailClient({
               src={images[activeImage]?.image_url ?? PLACEHOLDER_IMAGE}
               alt={images[activeImage]?.alt_text ?? product.name}
               priority
+              onSwipeLeft={() =>
+                setActiveImage((i) => Math.min(images.length - 1, i + 1))
+              }
+              onSwipeRight={() => setActiveImage((i) => Math.max(0, i - 1))}
             />
           </div>
         </div>

@@ -139,13 +139,19 @@ export function SettingsForm({ settings }: { settings: SiteSettings | null }) {
         <h2 className="admin-section-title">Order notifications</h2>
 
         <div className="field">
-          <label htmlFor="notification_email">Order notification email</label>
+          <label htmlFor="notification_email">Order alert email (BCC)</label>
           <input
             id="notification_email"
             name="notification_email"
             type="email"
-            defaultValue={settings?.notification_email ?? ""}
+            placeholder="orders@safvane.com"
+            defaultValue={settings?.notification_email ?? "orders@safvane.com"}
           />
+          <p className="admin-field-hint">
+            BCC copy of every order confirmation sent here (default:
+            orders@safvane.com). Customer still receives the branded email only
+            once.
+          </p>
         </div>
 
         <div className="field">

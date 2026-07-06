@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getOrderCommunications } from "@/app/admin/actions";
 import { OrderDetailClient } from "@/components/admin/OrderDetailClient";
 import { notFound } from "next/navigation";
 
@@ -18,5 +19,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
 
   if (!order) notFound();
 
-  return <OrderDetailClient order={order} />;
+  const communications = await getOrderCommunications(id);
+
+  return <OrderDetailClient order={order} communications={communications} />;
 }
