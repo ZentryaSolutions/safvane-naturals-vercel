@@ -14,6 +14,7 @@ import {
 } from "@/lib/shipping";
 import type { SiteSettings } from "@/lib/types";
 import type { CheckoutInput } from "@/lib/validations";
+import { markOrderPlaced } from "@/components/storefront/OrderConfirmationView";
 
 type ShippingSettings = Pick<
   SiteSettings,
@@ -109,13 +110,8 @@ export default function CheckoutPage() {
       }
 
       setRedirecting(true);
-      if (data.whatsappUrl) {
-        sessionStorage.setItem("safvane-wa-url", data.whatsappUrl);
-      }
-      if (payload.customer_email?.trim()) {
-        sessionStorage.setItem("safvane-order-email", payload.customer_email);
-      }
-      router.replace(`/order-confirmation/${data.orderNumber}`);
+      markOrderPlaced();
+      router.replace("/order-confirmation");
     } catch {
       placingOrder.current = false;
       setFormError("Something went wrong. Please try again.");

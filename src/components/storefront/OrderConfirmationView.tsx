@@ -2,63 +2,26 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import {
-  CheckCircle2,
-  Mail,
-  MessageCircle,
-  Package,
-  Truck,
-} from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
-import { formatPrice } from "@/lib/utils";
-import type { Order, OrderItem } from "@/lib/types";
 
-interface OrderConfirmationViewProps {
-  order: (Order & { items: OrderItem[] }) | null;
-  orderNumber: string;
-}
+const ORDER_PLACED_KEY = "safvane-order-placed";
 
-export function OrderConfirmationView({
-  order,
-  orderNumber,
-}: OrderConfirmationViewProps) {
+export function OrderConfirmationView() {
   const { clearCart } = useCart();
-  const [waUrl, setWaUrl] = useState<string | null>(null);
-  const [emailSent, setEmailSent] = useState(false);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (order) {
+    if (sessionStorage.getItem(ORDER_PLACED_KEY)) {
       clearCart();
+      sessionStorage.removeItem(ORDER_PLACED_KEY);
     }
-  }, [order, clearCart]);
+    sessionStorage.removeItem("safvane-wa-url");
+    sessionStorage.removeItem("safvane-order-email");
+    setReady(true);
+  }, [clearCart]);
 
-  useEffect(() => {
-    const url = sessionStorage.getItem("safvane-wa-url");
-    if (url) {
-      setWaUrl(url);
-      sessionStorage.removeItem("safvane-wa-url");
-    }
-    const email = sessionStorage.getItem("safvane-order-email");
-    if (email && order?.customer_email) {
-      setEmailSent(true);
-      sessionStorage.removeItem("safvane-order-email");
-    }
-  }, [order]);
-
-  if (!order) {
-    return (
-      <div className="order-confirm">
-        <h1>Order not found</h1>
-        <p style={{ color: "var(--dim)", marginBottom: 24 }}>
-          We could not find order <strong>{orderNumber}</strong>. If you just placed
-          an order, wait a moment and refresh.
-        </p>
-        <Link href="/shop" className="btn">
-          <span>Continue Shopping</span>
-        </Link>
-      </div>
-    );
-  }
+  if (!ready) return null;
 
   return (
     <div className="order-confirm">
@@ -68,88 +31,18 @@ export function OrderConfirmationView({
           Order <em>placed successfully</em>
         </h1>
         <p className="order-confirm-lead">
-          Thank you, <strong>{order.customer_name}</strong>. Your order has been
-          received and is being prepared.
+          Thank you for your order. We have received it and will be in touch
+          soon.
         </p>
       </div>
-
-      <div className="order-box">
-        <p className="order-box-label">ORDER NUMBER</p>
-        <p className="order-box-number">{order.order_number}</p>
-
-        {order.items?.map((item) => (
-          <div key={item.id} className="sr">
-            <span>
-              {item.product_name_snapshot} ({item.variant_label_snapshot}) ×{" "}
-              {item.quantity}
-            </span>
-            <span>{formatPrice(item.unit_price_snapshot * item.quantity)}</span>
-          </div>
-        ))}
-
-        <div className="sr">
-          <span>Shipping</span>
-          <span>
-            {Number(order.shipping_fee) === 0
-              ? "FREE"
-              : formatPrice(Number(order.shipping_fee))}
-          </span>
-        </div>
-
-        <div className="sr total">
-          <span>Total (Cash on Delivery)</span>
-          <strong>{formatPrice(Number(order.total))}</strong>
-        </div>
-      </div>
-
-      <div className="order-confirm-steps">
-        <div className="order-confirm-step">
-          <Package size={20} aria-hidden />
-          <div>
-            <strong>We&apos;re preparing your order</strong>
-            <p>You&apos;ll get a call or WhatsApp to confirm delivery details.</p>
-          </div>
-        </div>
-        <div className="order-confirm-step">
-          <Truck size={20} aria-hidden />
-          <div>
-            <strong>Pay on delivery</strong>
-            <p>
-              Keep Rs. {Number(order.total).toLocaleString()} ready when your parcel
-              arrives.
-            </p>
-          </div>
-        </div>
-        {(emailSent || order.customer_email) && (
-          <div className="order-confirm-step">
-            <Mail size={20} aria-hidden />
-            <div>
-              <strong>Confirmation email</strong>
-              <p>
-                {order.customer_email
-                  ? `We've sent order details to ${order.customer_email}. Check your inbox and spam folder.`
-                  : "Add your email next time for instant confirmation."}
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {waUrl && (
-        <a
-          href={waUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="order-confirm-wa"
-        >
-          <MessageCircle size={18} aria-hidden />
-          Send order details on WhatsApp
-        </a>
-      )}
 
       <Link href="/shop" className="btn order-confirm-cta">
         <span>Continue Shopping</span>
       </Link>
     </div>
   );
+}
+
+export function markOrderPlaced() {
+  sessionStorage.setItem(ORDER_PLACED_KEY, "1");
 }

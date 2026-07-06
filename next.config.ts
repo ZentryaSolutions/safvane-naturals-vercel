@@ -2,6 +2,15 @@
 const nextConfig = {
   // Hide "Compiling..." / "Rendering..." badge in local dev (never shown in production)
   devIndicators: false,
+  async redirects() {
+    return [
+      {
+        source: "/order-confirmation/:orderNumber",
+        destination: "/order-confirmation",
+        permanent: false,
+      },
+    ];
+  },
   serverActions: {
     bodySizeLimit: "20mb",
   },
