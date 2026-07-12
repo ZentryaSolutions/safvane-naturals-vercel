@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { ShieldCheck, Truck, User, MapPin, FileText, Loader2 } from "lucide-react";
+import { ShieldCheck, Truck, User, MapPin, FileText, Loader2, X } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useSyncedCartShipping } from "@/hooks/useSyncedCartShipping";
 import { formatPrice } from "@/lib/utils";
@@ -23,7 +23,7 @@ type ShippingSettings = Pick<
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, subtotal, stockIssues } = useCart();
+  const { items, subtotal, stockIssues, removeItem } = useCart();
   const shippingItems = useSyncedCartShipping(items);
   const [shippingSettings, setShippingSettings] = useState<ShippingSettings | null>(null);
   const [loading, setLoading] = useState(false);
@@ -58,12 +58,19 @@ export default function CheckoutPage() {
   const shippingFee = calculateShippingFee(subtotal, shippingSettings, shippingItems);
   const total = subtotal + shippingFee;
   const hasStockIssues = stockIssues.length > 0;
+  const canPlaceOrder =
+    items.length > 0 && !hasStockIssues && !loading && !redirecting;
   const amountForFreeShipping = freeShippingAmountNeeded(subtotal, shippingSettings);
   const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
 
+  const handleRemoveItem = (variantId: string) => {
+    if (loading || redirecting) return;
+    removeItem(variantId);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (hasStockIssues) return;
+    if (!canPlaceOrder || items.length === 0) return;
     placingOrder.current = true;
     setLoading(true);
     setErrors({});
@@ -285,12 +292,14 @@ export default function CheckoutPage() {
               <button
                 type="submit"
                 className="btn checkout-submit-btn"
-                disabled={loading || hasStockIssues || redirecting}
+                disabled={!canPlaceOrder}
               >
                 <span>
                   {loading || redirecting
                     ? "Placing Order..."
-                    : "Place Order (Cash on Delivery)"}
+                    : items.length === 0
+                      ? "Cart is empty"
+                      : "Place Order (Cash on Delivery)"}
                 </span>
               </button>
 
@@ -325,10 +334,20 @@ export default function CheckoutPage() {
                       <p className="checkout-item-meta">
                         {item.variantLabel} × {item.quantity}
                       </p>
+                      <p className="checkout-item-price">
+                        {formatPrice(item.price * item.quantity)}
+                      </p>
                     </div>
-                    <span className="checkout-item-price">
-                      {formatPrice(item.price * item.quantity)}
-                    </span>
+                    <button
+                      type="button"
+                      className="checkout-item-remove"
+                      onClick={() => handleRemoveItem(item.variantId)}
+                      disabled={loading || redirecting}
+                      aria-label={`Remove ${item.productName} from order`}
+                    >
+                      <X size={16} aria-hidden />
+                      <span>Remove</span>
+                    </button>
                   </li>
                 ))}
               </ul>

@@ -56,7 +56,7 @@ export default function AboutPage() {
               Nature&apos;s purity,
               <br />
               <em>bottled with care.</em>
-            </h1>
+      </h1>
           </Reveal>
           <Reveal delay={2}>
             <p className="about-hero-lead">
@@ -220,7 +220,7 @@ export default function AboutPage() {
             <Link href="/faq" className="btn-ghost">
               Read FAQ
             </Link>
-          </div>
+      </div>
         </section>
       </Reveal>
     </div>

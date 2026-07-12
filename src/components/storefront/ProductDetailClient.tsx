@@ -61,7 +61,7 @@ export function ProductDetailClient({
       ""
   );
   const [quantity, setQuantity] = useState(1);
-  const [activeImage, setActiveImage] = useState(0);
+  const [activeMedia, setActiveMedia] = useState(0);
   const [tab, setTab] = useState<DetailTab>("details");
   const [openReviewForm, setOpenReviewForm] = useState(false);
 
@@ -74,18 +74,36 @@ export function ProductDetailClient({
   const selectedVariant = product.variants.find(
     (v) => v.id === selectedVariantId
   );
-  const images =
-    product.images.length > 0
-      ? product.images
+
+  type GalleryItem =
+    | { type: "image"; id: string; src: string; alt: string }
+    | { type: "video"; id: string; src: string; poster?: string | null };
+
+  const gallery: GalleryItem[] = [
+    ...(product.images.length > 0
+      ? product.images.map((img) => ({
+          type: "image" as const,
+          id: img.id,
+          src: img.image_url,
+          alt: img.alt_text ?? product.name,
+        }))
       : [
           {
-            image_url: PLACEHOLDER_IMAGE,
-            alt_text: product.name,
+            type: "image" as const,
             id: "ph",
-            product_id: product.id,
-            sort_order: 0,
+            src: PLACEHOLDER_IMAGE,
+            alt: product.name,
           },
-        ];
+        ]),
+    ...(product.videos ?? []).map((v) => ({
+      type: "video" as const,
+      id: v.id,
+      src: v.video_url,
+      poster: v.poster_url,
+    })),
+  ];
+
+  const active = gallery[Math.min(activeMedia, gallery.length - 1)] ?? gallery[0];
   const hasMultipleVariants = product.variants.length > 1;
   const maxQty = selectedVariant?.stock_quantity ?? 1;
 
@@ -133,35 +151,71 @@ export function ProductDetailClient({
       <div className="pdp-top">
         <div className="pdp-gallery-col">
           <div className="pdp-gallery">
-            {images.length > 1 && (
+            {gallery.length > 1 && (
               <div className="pdp-thumbs-vertical">
-                {images.map((img, i) => (
+                {gallery.map((item, i) => (
                   <button
-                    key={img.id ?? i}
+                    key={item.id}
                     type="button"
-                    className={`pdp-thumb-v${activeImage === i ? " on" : ""}`}
-                    onClick={() => setActiveImage(i)}
-                    aria-label={`View image ${i + 1}`}
+                    className={`pdp-thumb-v${activeMedia === i ? " on" : ""}${item.type === "video" ? " is-video" : ""}`}
+                    onClick={() => setActiveMedia(i)}
+                    aria-label={
+                      item.type === "video"
+                        ? `Play video ${i + 1}`
+                        : `View image ${i + 1}`
+                    }
                   >
-                    <ProductMediaFrame
-                      src={img.image_url}
-                      alt={img.alt_text ?? product.name}
-                      variant="thumb"
-                    />
+                    {item.type === "video" ? (
+                      <span className="pdp-thumb-video">
+                        <video
+                          src={item.src}
+                          muted
+                          playsInline
+                          preload="metadata"
+                          aria-hidden
+                        />
+                        <span className="pdp-thumb-play" aria-hidden>
+                          ▶
+                        </span>
+                      </span>
+                    ) : (
+                      <ProductMediaFrame
+                        src={item.src}
+                        alt={item.alt}
+                        variant="thumb"
+                      />
+                    )}
                   </button>
                 ))}
               </div>
             )}
 
-            <ProductImageZoom
-              src={images[activeImage]?.image_url ?? PLACEHOLDER_IMAGE}
-              alt={images[activeImage]?.alt_text ?? product.name}
-              priority
-              onSwipeLeft={() =>
-                setActiveImage((i) => Math.min(images.length - 1, i + 1))
-              }
-              onSwipeRight={() => setActiveImage((i) => Math.max(0, i - 1))}
-            />
+            {active?.type === "video" ? (
+              <div className="pdp-video-stage">
+                <video
+                  key={active.id}
+                  className="pdp-video-player"
+                  src={active.src}
+                  poster={active.poster ?? undefined}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  controlsList="nodownload"
+                >
+                  Your browser does not support video playback.
+                </video>
+              </div>
+            ) : (
+              <ProductImageZoom
+                src={active?.src ?? PLACEHOLDER_IMAGE}
+                alt={active?.type === "image" ? active.alt : product.name}
+                priority
+                onSwipeLeft={() =>
+                  setActiveMedia((i) => Math.min(gallery.length - 1, i + 1))
+                }
+                onSwipeRight={() => setActiveMedia((i) => Math.max(0, i - 1))}
+              />
+            )}
           </div>
         </div>
 

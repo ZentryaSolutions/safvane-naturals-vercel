@@ -9,11 +9,7 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import {
-  deleteProductImage,
-  reorderProductImages,
-  uploadProductImage,
-} from "@/app/admin/actions";
+import { reorderProductImages } from "@/app/admin/actions";
 import { PRODUCT_IMAGE_GUIDE } from "@/lib/constants";
 import type { ProductImage } from "@/lib/types";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
@@ -21,6 +17,24 @@ import { useAdminToast } from "@/components/admin/AdminToastProvider";
 interface ProductImagesEditorProps {
   productId: string;
   initialImages: ProductImage[];
+}
+
+async function uploadViaApi(productId: string, file: File) {
+  const fd = new FormData();
+  fd.set("productId", productId);
+  fd.set("kind", "image");
+  fd.set("file", file);
+
+  const res = await fetch("/api/admin/product-media", {
+    method: "POST",
+    body: fd,
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || `Upload failed (${res.status})`);
+  }
+  return data as { success: true; image: ProductImage };
 }
 
 export function ProductImagesEditor({
@@ -32,6 +46,7 @@ export function ProductImagesEditor({
     [...initialImages].sort((a, b) => a.sort_order - b.sort_order)
   );
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -83,49 +98,59 @@ export function ProductImagesEditor({
     if (!files?.length) return;
 
     setUploading(true);
-    const uploads = await Promise.all(
-      Array.from(files).map(async (file) => {
-        const fd = new FormData();
-        fd.set("file", file);
-        return uploadProductImage(productId, fd);
-      })
-    );
-
+    const list = Array.from(files);
     const added: ProductImage[] = [];
-    for (const result of uploads) {
-      if (result.error) {
-        showToast("error", result.error);
-      } else if (result.image) {
-        added.push(result.image);
+
+    try {
+      for (let i = 0; i < list.length; i++) {
+        const file = list[i];
+        setProgress(`Uploading ${i + 1} of ${list.length}…`);
+        try {
+          const result = await uploadViaApi(productId, file);
+          if (result.image) added.push(result.image);
+        } catch (err) {
+          showToast(
+            "error",
+            err instanceof Error ? err.message : `Failed: ${file.name}`
+          );
+        }
       }
-    }
 
-    if (added.length) {
-      setImages((prev) =>
-        [...prev, ...added].sort((a, b) => a.sort_order - b.sort_order)
-      );
-      showToast(
-        "success",
-        added.length === 1 ? "Image uploaded" : `${added.length} images uploaded`
-      );
+      if (added.length) {
+        setImages((prev) =>
+          [...prev, ...added].sort((a, b) => a.sort_order - b.sort_order)
+        );
+        showToast(
+          "success",
+          added.length === 1 ? "Image uploaded" : `${added.length} images uploaded`
+        );
+      }
+    } finally {
+      setUploading(false);
+      setProgress("");
+      e.target.value = "";
     }
-
-    setUploading(false);
-    e.target.value = "";
   };
 
   const handleDelete = async (imageId: string) => {
     if (!confirm("Remove this image?")) return;
     setBusyId(imageId);
-    const result = await deleteProductImage(imageId, productId);
-    if (result.error) {
-      showToast("error", result.error);
+    try {
+      const res = await fetch("/api/admin/product-media", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "image", id: imageId, productId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast("error", data.error || "Delete failed");
+        return;
+      }
+      setImages((prev) => prev.filter((img) => img.id !== imageId));
+      showToast("success", "Image removed");
+    } finally {
       setBusyId(null);
-      return;
     }
-    setImages((prev) => prev.filter((img) => img.id !== imageId));
-    showToast("success", "Image removed");
-    setBusyId(null);
   };
 
   return (
@@ -138,8 +163,7 @@ export function ProductImagesEditor({
         {PRODUCT_IMAGE_GUIDE.tip}
         <br />
         <span style={{ color: "#7a6010" }}>
-          First image = primary photo on shop & product page. Use arrows or &ldquo;Make
-          primary&rdquo; to reorder — no need to delete others.
+          First image = primary photo on shop & product page. Max 12MB per image.
         </span>
       </div>
 
@@ -203,10 +227,10 @@ export function ProductImagesEditor({
 
       <label className={`admin-upload-label${uploading ? " is-uploading" : ""}`}>
         <Upload size={16} />
-        {uploading ? "Uploading..." : "Upload image(s)"}
+        {uploading ? progress || "Uploading..." : "Upload image(s)"}
         <input
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
           multiple
           onChange={handleUpload}
           disabled={uploading}

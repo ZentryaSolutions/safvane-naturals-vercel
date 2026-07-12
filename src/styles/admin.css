@@ -654,6 +654,51 @@
   color: #7a6010;
 }
 
+.admin-video-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.admin-video-thumb {
+  position: relative;
+  border: 1px solid #e4e4e7;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #0f0e0c;
+}
+
+.admin-video-thumb.is-busy {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.admin-video-player {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  display: block;
+  background: #000;
+  object-fit: contain;
+}
+
+.admin-video-thumb .admin-image-tool-delete {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.admin-empty-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 4px;
+  color: #71717a;
+  font-size: 0.875rem;
+}
+
 .admin-field-hint {
   font-size: 0.8125rem;
   color: #71717a;

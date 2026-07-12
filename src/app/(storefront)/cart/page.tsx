@@ -67,27 +67,29 @@ export default function CartPage() {
                 variant="thumb"
               />
             </div>
-            <div>
+            <div className="ci-info">
               <div className="ci-name">{item.productName}</div>
               <div className="ci-var">Size: {item.variantLabel}</div>
-              {(item.productFreeShipping ||
-                productShowsFreeShipping(
-                  {
-                    use_shop_shipping: item.useShopShipping,
-                    product_free_shipping: item.productFreeShipping,
-                  },
-                  shippingSettings,
-                  subtotal
-                )) && (
-                <FreeShippingBadge variant="cart" className="ci-free-ship" />
-              )}
-              <button
-                type="button"
-                className="ci-del"
-                onClick={() => removeItem(item.variantId)}
-              >
-                Remove
-              </button>
+              <div className="ci-meta">
+                {(item.productFreeShipping ||
+                  productShowsFreeShipping(
+                    {
+                      use_shop_shipping: item.useShopShipping,
+                      product_free_shipping: item.productFreeShipping,
+                    },
+                    shippingSettings,
+                    subtotal
+                  )) && (
+                  <FreeShippingBadge variant="cart" className="ci-free-ship" />
+                )}
+                <button
+                  type="button"
+                  className="ci-del"
+                  onClick={() => removeItem(item.variantId)}
+                >
+                  Remove
+                </button>
+              </div>
             </div>
             <div className="ci-right">
               <div className="ci-total">

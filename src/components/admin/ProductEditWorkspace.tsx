@@ -14,7 +14,7 @@ import {
 import { deleteProduct } from "@/app/admin/actions";
 import { ProductPackagingPanel } from "@/components/admin/ProductPackagingPanel";
 import { ProductForm } from "@/components/admin/ProductForm";
-import type { Category, Product, ProductBatch, ProductImage, ProductVariant } from "@/lib/types";
+import type { Category, Product, ProductBatch, ProductImage, ProductVideo, ProductVariant } from "@/lib/types";
 
 export type ProductEditSection =
   | "basics"
@@ -49,8 +49,8 @@ const SECTION_META: Record<
     icon: <Percent size={18} />,
   },
   images: {
-    label: "Images",
-    description: "Product photos for the shop and PDP",
+    label: "Media",
+    description: "Product photos and videos for the shop and PDP",
     icon: <ImageIcon size={18} />,
   },
   packaging: {
@@ -66,6 +66,7 @@ interface ProductEditWorkspaceProps {
   product?: Product & {
     variants: ProductVariant[];
     images: ProductImage[];
+    videos?: ProductVideo[];
   };
   batches?: ProductBatch[];
 }

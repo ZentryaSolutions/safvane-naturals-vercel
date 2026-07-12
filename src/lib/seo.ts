@@ -26,10 +26,32 @@ export const SEO_KEYWORDS = [
 
 const DEFAULT_OG_IMAGE = "/images/hero-black-seed-oil.png";
 
-/** Canonical production URL — prefers Vercel/env override. */
+/** Canonical production URL — never emit localhost in production. */
 export function getSiteUrl(): string {
-  const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim() || WEBSITE_URL;
-  return raw.replace(/\/$/, "");
+  const candidates = [
+    process.env.NEXT_PUBLIC_SITE_URL,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : undefined,
+    WEBSITE_URL,
+  ];
+
+  for (const raw of candidates) {
+    if (!raw?.trim()) continue;
+    const cleaned = raw.trim().replace(/\/$/, "");
+    const isLocal = /localhost|127\.0\.0\.1/i.test(cleaned);
+    if (process.env.NODE_ENV === "production" && isLocal) continue;
+    try {
+      const url = new URL(
+        cleaned.includes("://") ? cleaned : `https://${cleaned}`
+      );
+      return `${url.protocol}//${url.host}`;
+    } catch {
+      continue;
+    }
+  }
+
+  return WEBSITE_URL;
 }
 
 export function absoluteUrl(path = ""): string {
@@ -108,6 +130,7 @@ export function organizationJsonLd() {
     alternateName: BRAND.name,
     url: getSiteUrl(),
     logo: absoluteUrl("/icons/safvane-icon.png"),
+    image: absoluteUrl("/icons/safvane-icon.png"),
     description: BRAND.description,
     email: CONTACT.email,
     telephone: CONTACT.phone,
@@ -179,6 +202,7 @@ export function productJsonLd(
   reviewSummary?: ProductReviewSummary
 ) {
   const images = product.images?.map((img) => img.image_url).filter(Boolean) ?? [];
+  const videos = product.videos?.map((v) => v.video_url).filter(Boolean) ?? [];
   const prices = product.variants?.map((v) => Number(v.price)) ?? [];
   const inStock = product.variants?.some((v) => v.stock_status === "in_stock");
 
@@ -229,6 +253,16 @@ export function productJsonLd(
           },
     url: absoluteUrl(`/products/${product.slug}`),
   };
+
+  if (videos.length) {
+    schema.subjectOf = videos.map((contentUrl) => ({
+      "@type": "VideoObject",
+      name: product.name,
+      contentUrl,
+      embedUrl: contentUrl,
+      uploadDate: product.updated_at,
+    }));
+  }
 
   if (reviewSummary && reviewSummary.count > 0) {
     schema.aggregateRating = {
@@ -288,6 +322,18 @@ export const DEFAULT_SITE_METADATA: Metadata = {
   creator: BRAND.name,
   publisher: CONTACT.company,
   formatDetection: { email: false, address: false, telephone: false },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-48.png", sizes: "48x48", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/icons/safvane-icon.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+    shortcut: ["/favicon.ico"],
+  },
+  manifest: "/manifest.webmanifest",
   robots: {
     index: true,
     follow: true,

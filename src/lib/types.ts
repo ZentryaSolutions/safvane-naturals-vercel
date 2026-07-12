@@ -76,10 +76,20 @@ export interface ProductImage {
   alt_text: string | null;
 }
 
+export interface ProductVideo {
+  id: string;
+  product_id: string;
+  video_url: string;
+  poster_url: string | null;
+  sort_order: number;
+  created_at?: string;
+}
+
 export interface ProductWithDetails extends Product {
   category: Category | null;
   variants: ProductVariant[];
   images: ProductImage[];
+  videos?: ProductVideo[];
 }
 
 export interface ProductReview {

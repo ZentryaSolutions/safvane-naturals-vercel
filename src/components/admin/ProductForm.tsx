@@ -6,11 +6,12 @@ import Link from "next/link";
 import { saveProduct, deleteProduct } from "@/app/admin/actions";
 import { slugify } from "@/lib/utils";
 import { formatBenefitsForEditor } from "@/lib/rich-content";
-import type { Category, Product, ProductImage, ProductVariant } from "@/lib/types";
+import type { Category, Product, ProductImage, ProductVideo, ProductVariant } from "@/lib/types";
 import type { ProductEditSection } from "@/components/admin/ProductEditWorkspace";
 import { AdminRichTextEditor } from "@/components/admin/AdminRichTextEditor";
 import { ProductVariantsEditor } from "@/components/admin/ProductVariantsEditor";
 import { ProductImagesEditor } from "@/components/admin/ProductImagesEditor";
+import { ProductVideosEditor } from "@/components/admin/ProductVideosEditor";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
 import { Trash2 } from "lucide-react";
 
@@ -57,6 +58,7 @@ interface ProductFormProps {
   product?: Product & {
     variants: ProductVariant[];
     images: ProductImage[];
+    videos?: ProductVideo[];
   };
   categories: Category[];
   workspaceMode?: boolean;
@@ -423,6 +425,10 @@ export function ProductForm({
           <ProductImagesEditor
             productId={product.id}
             initialImages={product.images ?? []}
+          />
+          <ProductVideosEditor
+            productId={product.id}
+            initialVideos={product.videos ?? []}
           />
         </Section>
       )}

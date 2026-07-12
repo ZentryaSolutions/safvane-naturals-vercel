@@ -35,6 +35,10 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        <link rel="icon" href="/favicon.ico" sizes="32x32" type="image/png" />
+        <link rel="icon" href="/icons/icon-48.png" sizes="48x48" type="image/png" />
+        <link rel="icon" href="/icons/icon-192.png" sizes="192x192" type="image/png" />
+        <link rel="apple-touch-icon" href="/apple-icon.png" sizes="180x180" />
         <link rel="alternate" type="text/plain" href="/llms.txt" title="LLM Information" />
       </head>
       <body className="min-h-full antialiased" suppressHydrationWarning>

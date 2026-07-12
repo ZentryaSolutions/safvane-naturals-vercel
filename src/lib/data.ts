@@ -13,7 +13,8 @@ const productSelect = `
   *,
   category:categories(*),
   variants:product_variants(*),
-  images:product_images(*)
+  images:product_images(*),
+  videos:product_videos(*)
 `;
 
 export async function getSiteSettings(): Promise<SiteSettings | null> {
@@ -110,6 +111,9 @@ function enrichProduct(product: ProductWithDetails): ProductWithDetails {
       (a, b) => Number(a.price) - Number(b.price)
     ),
     images: [...(product.images ?? [])].sort(
+      (a, b) => a.sort_order - b.sort_order
+    ),
+    videos: [...(product.videos ?? [])].sort(
       (a, b) => a.sort_order - b.sort_order
     ),
   };
