@@ -9,6 +9,7 @@ import { ProductMediaFrame } from "@/components/storefront/ProductMediaFrame";
 import { ProductVideoPlayer } from "@/components/storefront/ProductVideoPlayer";
 import { RichTextContent } from "@/components/storefront/RichTextContent";
 import { appendBenefitsToContent } from "@/lib/rich-content";
+import { trackMetaViewContent } from "@/lib/meta-pixel";
 import { FreeShippingBadge } from "@/components/storefront/FreeShippingBadge";
 import { productHasActivePromo, productShowsFreeShipping } from "@/lib/shipping";
 import { ShopProductCard } from "@/components/storefront/ShopProductCard";
@@ -71,6 +72,21 @@ export function ProductDetailClient({
       setTab("reviews");
     }
   }, []);
+
+  useEffect(() => {
+    const variant =
+      product.variants.find((v) => v.id === selectedVariantId) ??
+      product.variants[0];
+    if (!variant) return;
+
+    trackMetaViewContent({
+      value: Number(variant.price),
+      currency: "PKR",
+      content_ids: [product.id],
+      content_type: "product",
+      content_name: product.name,
+    });
+  }, [product.id, product.name, selectedVariantId, product.variants]);
 
   const selectedVariant = product.variants.find(
     (v) => v.id === selectedVariantId
