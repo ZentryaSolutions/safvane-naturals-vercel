@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AddToCartButton } from "@/components/storefront/AddToCartButton";
 import { BuyNowButton } from "@/components/storefront/BuyNowButton";
@@ -66,6 +66,7 @@ export function ProductDetailClient({
   const [activeMedia, setActiveMedia] = useState(0);
   const [tab, setTab] = useState<DetailTab>("details");
   const [openReviewForm, setOpenReviewForm] = useState(false);
+  const viewContentTracked = useRef<string | null>(null);
 
   useEffect(() => {
     if (window.location.hash === "#reviews") {
@@ -74,11 +75,14 @@ export function ProductDetailClient({
   }, []);
 
   useEffect(() => {
+    if (viewContentTracked.current === product.id) return;
+
     const variant =
-      product.variants.find((v) => v.id === selectedVariantId) ??
+      product.variants.find((v) => v.stock_status === "in_stock") ??
       product.variants[0];
     if (!variant) return;
 
+    viewContentTracked.current = product.id;
     trackMetaViewContent({
       value: Number(variant.price),
       currency: "PKR",
@@ -86,7 +90,7 @@ export function ProductDetailClient({
       content_type: "product",
       content_name: product.name,
     });
-  }, [product.id, product.name, selectedVariantId, product.variants]);
+  }, [product.id, product.name, product.variants]);
 
   const selectedVariant = product.variants.find(
     (v) => v.id === selectedVariantId
