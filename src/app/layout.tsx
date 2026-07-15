@@ -46,6 +46,10 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        <meta
+          name="facebook-domain-verification"
+          content="pf8vguwmei6ff5mxoqhe5rfxbhw4r5"
+        />
         <link rel="icon" href="/favicon.ico" sizes="32x32" type="image/png" />
         <link rel="icon" href="/icons/icon-48.png" sizes="48x48" type="image/png" />
         <link rel="icon" href="/icons/icon-192.png" sizes="192x192" type="image/png" />
