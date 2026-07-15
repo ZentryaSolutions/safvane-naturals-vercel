@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useCart } from "@/context/CartContext";
+import { trackMetaAddToCart } from "@/lib/meta-pixel";
 import { PLACEHOLDER_IMAGE } from "@/lib/utils";
 import type { ProductVariant, ProductWithDetails } from "@/lib/types";
 
@@ -26,12 +27,13 @@ export function AddToCartButton({
 
   const handleClick = () => {
     if (outOfStock) return;
+    const price = Number(variant.price);
     addItem({
       variantId: variant.id,
       productId: product.id,
       productName: product.name,
       variantLabel: variant.variant_label,
-      price: Number(variant.price),
+      price,
       imageUrl: product.images[0]?.image_url ?? PLACEHOLDER_IMAGE,
       stockQuantity: variant.stock_quantity,
       stockStatus: variant.stock_status,
@@ -39,6 +41,19 @@ export function AddToCartButton({
       quantity,
       useShopShipping: product.use_shop_shipping ?? true,
       productFreeShipping: product.product_free_shipping ?? false,
+    });
+    trackMetaAddToCart({
+      value: price * quantity,
+      currency: "PKR",
+      contents: [
+        {
+          id: product.id,
+          quantity,
+          item_price: price,
+        },
+      ],
+      content_ids: [product.id],
+      content_type: "product",
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);

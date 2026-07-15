@@ -14,6 +14,18 @@ export type MetaPurchasePayload = {
   order_id?: string;
 };
 
+export type MetaAddToCartPayload = {
+  value: number;
+  currency: "PKR";
+  contents: Array<{
+    id: string;
+    quantity: number;
+    item_price: number;
+  }>;
+  content_ids: string[];
+  content_type: "product";
+};
+
 export const META_PURCHASE_KEY = "safvane-meta-purchase";
 
 declare global {
@@ -52,6 +64,16 @@ export function trackMetaPurchase(payload: MetaPurchasePayload) {
     content_type: payload.content_type,
     num_items: payload.num_items,
     ...(payload.order_id ? { order_id: payload.order_id } : {}),
+  });
+}
+
+export function trackMetaAddToCart(payload: MetaAddToCartPayload) {
+  trackMetaEvent("AddToCart", {
+    value: payload.value,
+    currency: payload.currency,
+    contents: payload.contents,
+    content_ids: payload.content_ids,
+    content_type: payload.content_type,
   });
 }
 
