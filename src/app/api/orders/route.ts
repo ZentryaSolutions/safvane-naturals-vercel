@@ -192,8 +192,8 @@ export async function POST(request: Request) {
     const contentIds = contents.map((c) => c.id);
     const numItems = cartItems.reduce((sum, ci) => sum + ci.quantity, 0);
 
-    // Fire-and-forget CAPI — do not block checkout if Meta is slow/down
-    void sendMetaCapiPurchase({
+    // Must await on Vercel — fire-and-forget gets killed when the response returns
+    const capiOk = await sendMetaCapiPurchase({
       eventId,
       value: total,
       currency: "PKR",
@@ -212,6 +212,10 @@ export async function POST(request: Request) {
       fbp,
       fbc,
     });
+
+    if (!capiOk) {
+      console.warn("[orders] Meta CAPI Purchase was not confirmed");
+    }
 
     return NextResponse.json({
       orderNumber: order.order_number,

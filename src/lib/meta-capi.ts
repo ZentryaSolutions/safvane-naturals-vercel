@@ -1,10 +1,18 @@
 import { createHash } from "crypto";
 
-const PIXEL_ID =
-  process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || "1591811942338255";
-const ACCESS_TOKEN = process.env.META_CAPI_ACCESS_TOKEN?.trim() || "";
-const TEST_EVENT_CODE = process.env.META_CAPI_TEST_EVENT_CODE?.trim() || "";
 const GRAPH_VERSION = "v21.0";
+
+function getPixelId() {
+  return process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || "1591811942338255";
+}
+
+function getAccessToken() {
+  return process.env.META_CAPI_ACCESS_TOKEN?.trim() || "";
+}
+
+function getTestEventCode() {
+  return process.env.META_CAPI_TEST_EVENT_CODE?.trim() || "";
+}
 
 type CapContent = {
   id: string;
@@ -57,7 +65,10 @@ function normalizeName(name: string) {
   return name.trim().toLowerCase();
 }
 
-function maybeHash(value: string | null | undefined, normalizer: (v: string) => string) {
+function maybeHash(
+  value: string | null | undefined,
+  normalizer: (v: string) => string
+) {
   if (!value?.trim()) return undefined;
   return sha256(normalizer(value));
 }
@@ -69,7 +80,11 @@ function maybeHash(value: string | null | undefined, normalizer: (v: string) => 
 export async function sendMetaCapiPurchase(
   input: CapPurchaseInput
 ): Promise<boolean> {
-  if (!ACCESS_TOKEN || !PIXEL_ID) {
+  const accessToken = getAccessToken();
+  const pixelId = getPixelId();
+  const testEventCode = getTestEventCode();
+
+  if (!accessToken || !pixelId) {
     console.warn("[meta-capi] Missing META_CAPI_ACCESS_TOKEN or pixel id");
     return false;
   }
@@ -126,12 +141,13 @@ export async function sendMetaCapiPurchase(
     ],
   };
 
-  if (TEST_EVENT_CODE) {
-    body.test_event_code = TEST_EVENT_CODE;
+  // Required for events to appear in Events Manager → Test events
+  if (testEventCode) {
+    body.test_event_code = testEventCode;
   }
 
   try {
-    const url = `https://graph.facebook.com/${GRAPH_VERSION}/${PIXEL_ID}/events?access_token=${encodeURIComponent(ACCESS_TOKEN)}`;
+    const url = `https://graph.facebook.com/${GRAPH_VERSION}/${pixelId}/events?access_token=${encodeURIComponent(accessToken)}`;
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -143,10 +159,16 @@ export async function sendMetaCapiPurchase(
     };
 
     if (!res.ok || json.error) {
-      console.error("[meta-capi] Purchase failed:", json.error?.message || json);
+      console.error(
+        "[meta-capi] Purchase failed:",
+        json.error?.message || JSON.stringify(json)
+      );
       return false;
     }
 
+    console.info(
+      `[meta-capi] Purchase ok events_received=${json.events_received ?? "?"} event_id=${input.eventId}`
+    );
     return true;
   } catch (err) {
     console.error("[meta-capi] Purchase request error:", err);
