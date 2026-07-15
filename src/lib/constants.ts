@@ -16,6 +16,7 @@ export const CONTACT = {
   address: "Attock City, Pakistan",
   company: "Safvane Naturals Pvt. Ltd.",
   cuin: "0343184",
+  ntn: "E811040",
 } as const;
 
 export const SOCIAL_LINKS = [

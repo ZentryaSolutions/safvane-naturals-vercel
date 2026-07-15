@@ -2,7 +2,7 @@ import Link from "next/link";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 import { WhatsAppButton } from "@/components/storefront/WhatsAppButton";
 import { getSiteSettings } from "@/lib/data";
-import { CONTACT, NAV_LINKS, SOCIAL_LINKS, WHATSAPP_DEFAULT_MESSAGE, WHATSAPP_NUMBER } from "@/lib/constants";
+import { BRAND, CONTACT, NAV_LINKS, SOCIAL_LINKS, WHATSAPP_DEFAULT_MESSAGE, WHATSAPP_NUMBER } from "@/lib/constants";
 import { getWhatsAppLink } from "@/lib/utils";
 
 function InstagramIcon({ size = 18 }: { size?: number }) {
@@ -131,7 +131,7 @@ export async function SafvaneFooter() {
 
       <div className="ft-bottom">
         <div>
-          © {new Date().getFullYear()} {CONTACT.company} · CUIN {CONTACT.cuin}
+          © {new Date().getFullYear()} {BRAND.name} · {CONTACT.ntn}
         </div>
         <div className="ft-bottom-right">
           <span>All prices in PKR</span>
