@@ -2,29 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { Film, Trash2, Upload } from "lucide-react";
+import { uploadProductMediaDirect } from "@/lib/admin-media-upload";
 import type { ProductVideo } from "@/lib/types";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
 
 interface ProductVideosEditorProps {
   productId: string;
   initialVideos: ProductVideo[];
-}
-
-async function uploadVideo(productId: string, file: File) {
-  const fd = new FormData();
-  fd.set("productId", productId);
-  fd.set("kind", "video");
-  fd.set("file", file);
-
-  const res = await fetch("/api/admin/product-media", {
-    method: "POST",
-    body: fd,
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.error || `Upload failed (${res.status})`);
-  }
-  return data as { success: true; video: ProductVideo };
 }
 
 export function ProductVideosEditor({
@@ -56,7 +40,12 @@ export function ProductVideosEditor({
         const file = list[i];
         setProgress(`Uploading video ${i + 1} of ${list.length}…`);
         try {
-          const result = await uploadVideo(productId, file);
+          const result = await uploadProductMediaDirect({
+            productId,
+            kind: "video",
+            file,
+            onProgress: setProgress,
+          });
           if (result.video) added.push(result.video);
         } catch (err) {
           showToast(
@@ -107,8 +96,8 @@ export function ProductVideosEditor({
     <div className="admin-card admin-product-card" style={{ marginTop: 20 }}>
       <div className="admin-image-guide">
         <strong>Product videos:</strong> MP4 or WebM recommended · Max 80MB ·
-        Shown in the product gallery so customers can play them on the product
-        page.
+        Uploads go directly to storage (works on production) · Shown in the
+        product gallery.
       </div>
 
       {videos.length > 0 && (

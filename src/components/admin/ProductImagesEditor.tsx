@@ -11,30 +11,13 @@ import {
 } from "lucide-react";
 import { reorderProductImages } from "@/app/admin/actions";
 import { PRODUCT_IMAGE_GUIDE } from "@/lib/constants";
+import { uploadProductMediaDirect } from "@/lib/admin-media-upload";
 import type { ProductImage } from "@/lib/types";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
 
 interface ProductImagesEditorProps {
   productId: string;
   initialImages: ProductImage[];
-}
-
-async function uploadViaApi(productId: string, file: File) {
-  const fd = new FormData();
-  fd.set("productId", productId);
-  fd.set("kind", "image");
-  fd.set("file", file);
-
-  const res = await fetch("/api/admin/product-media", {
-    method: "POST",
-    body: fd,
-  });
-
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.error || `Upload failed (${res.status})`);
-  }
-  return data as { success: true; image: ProductImage };
 }
 
 export function ProductImagesEditor({
@@ -106,7 +89,12 @@ export function ProductImagesEditor({
         const file = list[i];
         setProgress(`Uploading ${i + 1} of ${list.length}…`);
         try {
-          const result = await uploadViaApi(productId, file);
+          const result = await uploadProductMediaDirect({
+            productId,
+            kind: "image",
+            file,
+            onProgress: setProgress,
+          });
           if (result.image) added.push(result.image);
         } catch (err) {
           showToast(

@@ -4,26 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
-
-const IMAGE_TYPES = new Set([
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-  "image/avif",
-]);
-const VIDEO_TYPES = new Set(["video/mp4", "video/webm", "video/quicktime"]);
-
-const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
-const MAX_VIDEO_BYTES = 80 * 1024 * 1024;
-
-function extFromName(name: string, fallback: string) {
-  const part = name.split(".").pop()?.toLowerCase();
-  if (!part || part.length > 5) return fallback;
-  return part.replace(/[^a-z0-9]/g, "") || fallback;
-}
 
 async function requireAdmin() {
   const supabase = await createClient();
@@ -48,6 +28,12 @@ async function revalidateProduct(productId: string) {
   revalidatePath(`/admin/products/${productId}`);
 }
 
+/**
+ * Register a file already uploaded directly to Supabase Storage.
+ * Large files must NOT pass through this route (Vercel 413 body limit ~4.5MB).
+ *
+ * Body: { productId, kind: "image"|"video", path: "<productId>/filename.ext" }
+ */
 export async function POST(request: Request) {
   try {
     const user = await requireAdmin();
@@ -58,16 +44,26 @@ export async function POST(request: Request) {
       );
     }
 
-    const formData = await request.formData();
-    const productId = String(formData.get("productId") ?? "").trim();
-    const kind = String(formData.get("kind") ?? "image").trim();
-    const file = formData.get("file");
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return NextResponse.json(
+        { error: "Invalid request. Upload files directly to storage first." },
+        { status: 400 }
+      );
+    }
+
+    const productId = String(body.productId ?? "").trim();
+    const kind = String(body.kind ?? "image").trim();
+    const path = String(body.path ?? "").trim().replace(/^\/+/, "");
 
     if (!productId) {
       return NextResponse.json({ error: "Missing product id." }, { status: 400 });
     }
-    if (!(file instanceof File)) {
-      return NextResponse.json({ error: "No file received." }, { status: 400 });
+    if (!path || path.includes("..") || !path.startsWith(`${productId}/`)) {
+      return NextResponse.json({ error: "Invalid storage path." }, { status: 400 });
+    }
+    if (kind !== "image" && kind !== "video") {
+      return NextResponse.json({ error: "Invalid media kind." }, { status: 400 });
     }
 
     const service = createServiceClient();
@@ -81,42 +77,35 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Product not found." }, { status: 404 });
     }
 
+    const bucket = kind === "video" ? "product-videos" : "product-images";
+
+    // Confirm object exists in storage
+    const folder = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
+    const fileName = path.includes("/") ? path.slice(path.lastIndexOf("/") + 1) : path;
+    const { data: listed, error: listError } = await service.storage
+      .from(bucket)
+      .list(folder, { search: fileName, limit: 20 });
+
+    if (listError) {
+      return NextResponse.json(
+        { error: `Could not verify upload: ${listError.message}` },
+        { status: 500 }
+      );
+    }
+
+    const found = listed?.some((f) => f.name === fileName);
+    if (!found) {
+      return NextResponse.json(
+        { error: "Uploaded file not found in storage. Try again." },
+        { status: 400 }
+      );
+    }
+
+    const {
+      data: { publicUrl },
+    } = service.storage.from(bucket).getPublicUrl(path);
+
     if (kind === "video") {
-      if (!VIDEO_TYPES.has(file.type) && !/\.(mp4|webm|mov)$/i.test(file.name)) {
-        return NextResponse.json(
-          { error: "Use MP4, WebM, or MOV video files." },
-          { status: 400 }
-        );
-      }
-      if (file.size > MAX_VIDEO_BYTES) {
-        return NextResponse.json(
-          { error: "Video must be 80MB or smaller." },
-          { status: 400 }
-        );
-      }
-
-      const ext = extFromName(file.name, "mp4");
-      const path = `${productId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const bytes = Buffer.from(await file.arrayBuffer());
-
-      const { error: uploadError } = await service.storage
-        .from("product-videos")
-        .upload(path, bytes, {
-          contentType: file.type || "video/mp4",
-          upsert: false,
-        });
-
-      if (uploadError) {
-        return NextResponse.json(
-          { error: `Upload failed: ${uploadError.message}` },
-          { status: 500 }
-        );
-      }
-
-      const {
-        data: { publicUrl },
-      } = service.storage.from("product-videos").getPublicUrl(path);
-
       const { data: existing } = await service
         .from("product_videos")
         .select("sort_order")
@@ -142,41 +131,6 @@ export async function POST(request: Request) {
       await revalidateProduct(productId);
       return NextResponse.json({ success: true, video });
     }
-
-    if (!IMAGE_TYPES.has(file.type) && !/\.(jpe?g|png|webp|gif|avif)$/i.test(file.name)) {
-      return NextResponse.json(
-        { error: "Use JPG, PNG, WebP, GIF, or AVIF images." },
-        { status: 400 }
-      );
-    }
-    if (file.size > MAX_IMAGE_BYTES) {
-      return NextResponse.json(
-        { error: "Image must be 12MB or smaller." },
-        { status: 400 }
-      );
-    }
-
-    const ext = extFromName(file.name, "jpg");
-    const path = `${productId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-    const bytes = Buffer.from(await file.arrayBuffer());
-
-    const { error: uploadError } = await service.storage
-      .from("product-images")
-      .upload(path, bytes, {
-        contentType: file.type || "image/jpeg",
-        upsert: false,
-      });
-
-    if (uploadError) {
-      return NextResponse.json(
-        { error: `Upload failed: ${uploadError.message}` },
-        { status: 500 }
-      );
-    }
-
-    const {
-      data: { publicUrl },
-    } = service.storage.from("product-images").getPublicUrl(path);
 
     const { data: existing } = await service
       .from("product_images")
@@ -204,7 +158,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, image });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Upload failed";
-    console.error("product-media upload:", message);
+    console.error("product-media register:", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
