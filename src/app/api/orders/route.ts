@@ -169,6 +169,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       orderNumber: order.order_number,
+      total,
+      currency: "PKR",
       whatsappUrl,
     });
   } catch (e) {

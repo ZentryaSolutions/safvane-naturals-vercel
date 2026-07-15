@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { consumeMetaPurchase, trackMetaPurchase } from "@/lib/meta-pixel";
 
 const ORDER_PLACED_KEY = "safvane-order-placed";
 
@@ -12,6 +13,12 @@ export function OrderConfirmationView() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    // Fire Purchase on confirmation page load (once per completed checkout)
+    const purchase = consumeMetaPurchase();
+    if (purchase) {
+      trackMetaPurchase(purchase);
+    }
+
     if (sessionStorage.getItem(ORDER_PLACED_KEY)) {
       clearCart();
       sessionStorage.removeItem(ORDER_PLACED_KEY);

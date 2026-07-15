@@ -15,6 +15,7 @@ import {
 import type { SiteSettings } from "@/lib/types";
 import type { CheckoutInput } from "@/lib/validations";
 import { markOrderPlaced } from "@/components/storefront/OrderConfirmationView";
+import { stashMetaPurchase } from "@/lib/meta-pixel";
 
 type ShippingSettings = Pick<
   SiteSettings,
@@ -117,6 +118,19 @@ export default function CheckoutPage() {
       }
 
       setRedirecting(true);
+      stashMetaPurchase({
+        value: Number(data.total ?? total),
+        currency: "PKR",
+        contents: items.map((i) => ({
+          id: i.productId,
+          quantity: i.quantity,
+          item_price: i.price,
+        })),
+        content_ids: items.map((i) => i.productId),
+        content_type: "product",
+        num_items: itemCount,
+        order_id: data.orderNumber || undefined,
+      });
       markOrderPlaced();
       router.replace("/order-confirmation");
     } catch {
