@@ -2,6 +2,7 @@ import { SafvaneNav } from "@/components/layout/SafvaneNav";
 import { SafvaneFooter } from "@/components/layout/SafvaneFooter";
 import { WhatsAppFloat } from "@/components/layout/WhatsAppFloat";
 import { PromoBanner } from "@/components/storefront/PromoBanner";
+import { MetaPixel } from "@/components/analytics/MetaPixel";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { CartProvider } from "@/context/CartContext";
 import { ThemeProvider } from "@/context/ThemeContext";
@@ -26,6 +27,7 @@ export default async function StorefrontLayout({
   return (
     <ThemeProvider>
       <CartProvider>
+        <MetaPixel />
         <JsonLd
           data={[
             organizationJsonLd(),
