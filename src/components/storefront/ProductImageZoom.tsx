@@ -12,10 +12,20 @@ interface ProductImageZoomProps {
   onSwipeRight?: () => void;
 }
 
-function getTouchDistance(touches: React.TouchList | TouchList) {
+function getTouchDistance(touches: TouchList | React.TouchList) {
   const dx = touches[0].clientX - touches[1].clientX;
   const dy = touches[0].clientY - touches[1].clientY;
   return Math.hypot(dx, dy);
+}
+
+function detectTouchDevice() {
+  if (typeof window === "undefined") return true;
+  return (
+    window.matchMedia("(pointer: coarse)").matches ||
+    window.matchMedia("(hover: none)").matches ||
+    "ontouchstart" in window ||
+    window.innerWidth <= 1024
+  );
 }
 
 function ProductImageLightbox({
@@ -29,15 +39,29 @@ function ProductImageLightbox({
 }) {
   const [scale, setScale] = useState(1);
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
+  const stageRef = useRef<HTMLDivElement>(null);
   const pinchStart = useRef({ distance: 0, scale: 1 });
   const dragStart = useRef({ x: 0, y: 0, tx: 0, ty: 0, active: false });
   const lastTap = useRef(0);
+  const scaleRef = useRef(1);
+  const translateRef = useRef({ x: 0, y: 0 });
+  const openedAt = useRef(Date.now());
 
   useEffect(() => {
-    const prev = document.body.style.overflow;
+    scaleRef.current = scale;
+  }, [scale]);
+  useEffect(() => {
+    translateRef.current = translate;
+  }, [translate]);
+
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    const prevTouch = document.body.style.touchAction;
     document.body.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
     return () => {
-      document.body.style.overflow = prev;
+      document.body.style.overflow = prevOverflow;
+      document.body.style.touchAction = prevTouch;
     };
   }, []);
 
@@ -49,72 +73,88 @@ function ProductImageLightbox({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  /** iOS fires a synthetic click after touchend — ignore close for a short window. */
+  const safeClose = useCallback(() => {
+    if (Date.now() - openedAt.current < 450) return;
+    onClose();
+  }, [onClose]);
+
   const resetZoom = useCallback(() => {
     setScale(1);
     setTranslate({ x: 0, y: 0 });
   }, []);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      pinchStart.current = {
-        distance: getTouchDistance(e.touches),
-        scale,
-      };
+  // Native non-passive listeners so iOS pinch/zoom works (React onTouchMove is passive)
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        pinchStart.current = {
+          distance: getTouchDistance(e.touches),
+          scale: scaleRef.current,
+        };
+        dragStart.current.active = false;
+        return;
+      }
+      if (e.touches.length === 1 && scaleRef.current > 1) {
+        dragStart.current = {
+          x: e.touches[0].clientX,
+          y: e.touches[0].clientY,
+          tx: translateRef.current.x,
+          ty: translateRef.current.y,
+          active: true,
+        };
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const distance = getTouchDistance(e.touches);
+        const ratio = distance / (pinchStart.current.distance || 1);
+        const next = Math.min(4, Math.max(1, pinchStart.current.scale * ratio));
+        setScale(next);
+        if (next <= 1.05) setTranslate({ x: 0, y: 0 });
+        return;
+      }
+      if (e.touches.length === 1 && dragStart.current.active && scaleRef.current > 1) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - dragStart.current.x;
+        const dy = e.touches[0].clientY - dragStart.current.y;
+        setTranslate({
+          x: dragStart.current.tx + dx,
+          y: dragStart.current.ty + dy,
+        });
+      }
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length > 0) return;
       dragStart.current.active = false;
-      return;
-    }
+      pinchStart.current.scale = scaleRef.current;
+      if (scaleRef.current < 1.05) resetZoom();
 
-    if (e.touches.length === 1 && scale > 1) {
-      dragStart.current = {
-        x: e.touches[0].clientX,
-        y: e.touches[0].clientY,
-        tx: translate.x,
-        ty: translate.y,
-        active: true,
-      };
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      const distance = getTouchDistance(e.touches);
-      const ratio = distance / pinchStart.current.distance;
-      const next = Math.min(4, Math.max(1, pinchStart.current.scale * ratio));
-      setScale(next);
-      if (next <= 1.05) {
-        setTranslate({ x: 0, y: 0 });
+      const now = Date.now();
+      if (now - lastTap.current < 280 && e.changedTouches.length === 1) {
+        if (scaleRef.current > 1.1) resetZoom();
+        else setScale(2.5);
       }
-      return;
-    }
+      lastTap.current = now;
+    };
 
-    if (e.touches.length === 1 && dragStart.current.active && scale > 1) {
-      const dx = e.touches[0].clientX - dragStart.current.x;
-      const dy = e.touches[0].clientY - dragStart.current.y;
-      setTranslate({
-        x: dragStart.current.tx + dx,
-        y: dragStart.current.ty + dy,
-      });
-    }
-  };
+    stage.addEventListener("touchstart", onTouchStart, { passive: false });
+    stage.addEventListener("touchmove", onTouchMove, { passive: false });
+    stage.addEventListener("touchend", onTouchEnd);
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (e.touches.length > 0) return;
-
-    dragStart.current.active = false;
-    pinchStart.current.scale = scale;
-
-    if (scale < 1.05) resetZoom();
-
-    const now = Date.now();
-    if (now - lastTap.current < 280 && e.changedTouches.length === 1) {
-      if (scale > 1.1) {
-        resetZoom();
-      } else {
-        setScale(2.5);
-      }
-    }
-    lastTap.current = now;
-  };
+    return () => {
+      stage.removeEventListener("touchstart", onTouchStart);
+      stage.removeEventListener("touchmove", onTouchMove);
+      stage.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [resetZoom]);
 
   return createPortal(
     <div
@@ -122,22 +162,23 @@ function ProductImageLightbox({
       role="dialog"
       aria-modal="true"
       aria-label="Product image viewer"
-      onClick={onClose}
+      onClick={safeClose}
     >
       <button
         type="button"
         className="pdp-lightbox-close"
-        onClick={onClose}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
         aria-label="Close image viewer"
       >
         ×
       </button>
       <div
+        ref={stageRef}
         className="pdp-lightbox-stage"
         onClick={(e) => e.stopPropagation()}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -145,7 +186,8 @@ function ProductImageLightbox({
           alt={alt}
           className="pdp-lightbox-img"
           style={{
-            transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
+            transform: `translate3d(${translate.x}px, ${translate.y}px, 0) scale(${scale})`,
+            WebkitTransform: `translate3d(${translate.x}px, ${translate.y}px, 0) scale(${scale})`,
           }}
           draggable={false}
         />
@@ -168,19 +210,17 @@ export function ProductImageZoom({
   const containerRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(false);
   const [origin, setOrigin] = useState({ x: 50, y: 50 });
-  const [isTouch, setIsTouch] = useState(false);
+  // Default true so first tap on iPhone works before hydration effect runs
+  const [isTouch, setIsTouch] = useState(true);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const swipeStart = useRef<{ x: number; y: number; t: number } | null>(null);
   const blockTap = useRef(false);
+  const usedTouch = useRef(false);
 
   useEffect(() => {
     setMounted(true);
-    const update = () => {
-      setIsTouch(
-        window.matchMedia("(pointer: coarse)").matches || window.innerWidth <= 1024
-      );
-    };
+    const update = () => setIsTouch(detectTouchDevice());
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
@@ -190,7 +230,6 @@ export function ProductImageZoom({
     if (isTouch) return;
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
-
     const x = ((event.clientX - rect.left) / rect.width) * 100;
     const y = ((event.clientY - rect.top) / rect.height) * 100;
     setOrigin({
@@ -199,12 +238,13 @@ export function ProductImageZoom({
     });
   };
 
-  const handleStageClick = () => {
-    if (blockTap.current || !isTouch) return;
+  const openLightbox = () => {
+    if (blockTap.current) return;
     setLightboxOpen(true);
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    usedTouch.current = true;
     if (e.touches.length !== 1) return;
     swipeStart.current = {
       x: e.touches[0].clientX,
@@ -221,6 +261,12 @@ export function ProductImageZoom({
     const dx = e.changedTouches[0].clientX - start.x;
     const dy = e.changedTouches[0].clientY - start.y;
     const elapsed = Date.now() - start.t;
+
+    // Tap → open lightbox (skip synthetic click that follows on iOS)
+    if (Math.abs(dx) < 12 && Math.abs(dy) < 12 && elapsed < 350) {
+      openLightbox();
+      return;
+    }
 
     if (elapsed > 400 || Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy) * 1.2) {
       return;
@@ -243,7 +289,14 @@ export function ProductImageZoom({
         onMouseEnter={() => !isTouch && setActive(true)}
         onMouseLeave={() => !isTouch && setActive(false)}
         onMouseMove={handleMove}
-        onClick={handleStageClick}
+        onClick={() => {
+          // Desktop / pointer devices; ignore ghost click after touch on iOS
+          if (usedTouch.current) {
+            usedTouch.current = false;
+            return;
+          }
+          if (isTouch) openLightbox();
+        }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         role={isTouch ? "button" : undefined}
@@ -251,7 +304,7 @@ export function ProductImageZoom({
         onKeyDown={(e) => {
           if (isTouch && (e.key === "Enter" || e.key === " ")) {
             e.preventDefault();
-            setLightboxOpen(true);
+            openLightbox();
           }
         }}
         aria-label={isTouch ? "Tap to enlarge product image" : undefined}

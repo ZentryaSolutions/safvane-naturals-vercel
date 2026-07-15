@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Fraunces, Inter, Space_Mono } from "next/font/google";
 import { DEFAULT_SITE_METADATA } from "@/lib/seo";
 import "./globals.css";
@@ -22,6 +22,17 @@ const spaceMono = Space_Mono({
 });
 
 export const metadata: Metadata = DEFAULT_SITE_METADATA;
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#090805" },
+    { media: "(prefers-color-scheme: light)", color: "#faf8f4" },
+  ],
+};
 
 export default function RootLayout({
   children,

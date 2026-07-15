@@ -6,6 +6,7 @@ import { AddToCartButton } from "@/components/storefront/AddToCartButton";
 import { BuyNowButton } from "@/components/storefront/BuyNowButton";
 import { ProductImageZoom } from "@/components/storefront/ProductImageZoom";
 import { ProductMediaFrame } from "@/components/storefront/ProductMediaFrame";
+import { ProductVideoPlayer } from "@/components/storefront/ProductVideoPlayer";
 import { RichTextContent } from "@/components/storefront/RichTextContent";
 import { appendBenefitsToContent } from "@/lib/rich-content";
 import { FreeShippingBadge } from "@/components/storefront/FreeShippingBadge";
@@ -167,12 +168,11 @@ export function ProductDetailClient({
                   >
                     {item.type === "video" ? (
                       <span className="pdp-thumb-video">
-                        <video
+                        <ProductVideoPlayer
                           src={item.src}
                           muted
-                          playsInline
                           preload="metadata"
-                          aria-hidden
+                          aria-hidden="true"
                         />
                         <span className="pdp-thumb-play" aria-hidden>
                           ▶
@@ -192,18 +192,14 @@ export function ProductDetailClient({
 
             {active?.type === "video" ? (
               <div className="pdp-video-stage">
-                <video
+                <ProductVideoPlayer
                   key={active.id}
                   className="pdp-video-player"
                   src={active.src}
-                  poster={active.poster ?? undefined}
+                  poster={active.poster}
                   controls
-                  playsInline
                   preload="metadata"
-                  controlsList="nodownload"
-                >
-                  Your browser does not support video playback.
-                </video>
+                />
               </div>
             ) : (
               <ProductImageZoom

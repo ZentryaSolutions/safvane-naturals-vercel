@@ -2,6 +2,27 @@
 
 import { useEffect, useRef } from "react";
 
+function prefersReducedMotion() {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function isElementInView(el: HTMLElement) {
+  const rect = el.getBoundingClientRect();
+  const vh = window.innerHeight || document.documentElement.clientHeight;
+  const vw = window.innerWidth || document.documentElement.clientWidth;
+  return (
+    rect.bottom >= 0 &&
+    rect.right >= 0 &&
+    rect.top <= vh &&
+    rect.left <= vw
+  );
+}
+
+/**
+ * Scroll reveal. Must never leave content permanently invisible on iOS Safari
+ * (IntersectionObserver + overflow parents can miss entries).
+ */
 export function Reveal({
   children,
   className = "",
@@ -16,19 +37,48 @@ export function Reveal({
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+
+    const reveal = () => {
+      el.classList.add("in");
+    };
+
+    // Instantly visible if reduced motion, already on screen, or as safety fallback
+    if (prefersReducedMotion() || isElementInView(el)) {
+      reveal();
+      return;
+    }
+
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      reveal();
+      obs.disconnect();
+    };
+
     const obs = new IntersectionObserver(
       (entries) => {
         entries.forEach((e) => {
-          if (e.isIntersecting) {
-            e.target.classList.add("in");
-            obs.unobserve(e.target);
+          if (e.isIntersecting || e.intersectionRatio > 0) {
+            finish();
           }
         });
       },
-      { threshold: 0.1 }
+      { threshold: 0, rootMargin: "80px 0px 80px 0px" }
     );
+
     obs.observe(el);
-    return () => obs.disconnect();
+
+    // iOS Safari / bfcache / overflow quirks: never leave opacity:0 forever
+    const fallback = window.setTimeout(finish, 900);
+    const onPageShow = () => finish();
+    window.addEventListener("pageshow", onPageShow);
+
+    return () => {
+      window.clearTimeout(fallback);
+      window.removeEventListener("pageshow", onPageShow);
+      obs.disconnect();
+    };
   }, []);
 
   const delayClass = delay ? ` d${delay}` : "";
