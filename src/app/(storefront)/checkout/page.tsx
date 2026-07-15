@@ -24,7 +24,7 @@ type ShippingSettings = Pick<
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, subtotal, stockIssues, removeItem } = useCart();
+  const { items, subtotal, stockIssues, removeItem, updateQuantity } = useCart();
   const shippingItems = useSyncedCartShipping(items);
   const [shippingSettings, setShippingSettings] = useState<ShippingSettings | null>(null);
   const [loading, setLoading] = useState(false);
@@ -67,6 +67,11 @@ export default function CheckoutPage() {
   const handleRemoveItem = (variantId: string) => {
     if (loading || redirecting) return;
     removeItem(variantId);
+  };
+
+  const handleUpdateQuantity = (variantId: string, quantity: number) => {
+    if (loading || redirecting) return;
+    updateQuantity(variantId, quantity);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -345,12 +350,48 @@ export default function CheckoutPage() {
                     </div>
                     <div className="checkout-item-info">
                       <p className="checkout-item-name">{item.productName}</p>
-                      <p className="checkout-item-meta">
-                        {item.variantLabel} × {item.quantity}
-                      </p>
+                      <p className="checkout-item-meta">{item.variantLabel}</p>
+                      <div className="checkout-item-qty">
+                        <div className="mini-step">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleUpdateQuantity(
+                                item.variantId,
+                                item.quantity - 1
+                              )
+                            }
+                            disabled={loading || redirecting}
+                            aria-label={`Decrease quantity of ${item.productName}`}
+                          >
+                            −
+                          </button>
+                          <span className="mv">{item.quantity}</span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleUpdateQuantity(
+                                item.variantId,
+                                Math.min(item.stockQuantity, item.quantity + 1)
+                              )
+                            }
+                            disabled={
+                              loading ||
+                              redirecting ||
+                              item.quantity >= item.stockQuantity
+                            }
+                            aria-label={`Increase quantity of ${item.productName}`}
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
                       <p className="checkout-item-price">
                         {formatPrice(item.price * item.quantity)}
                       </p>
+                      {item.quantity >= item.stockQuantity && (
+                        <p className="checkout-item-stock-hint">Max available</p>
+                      )}
                     </div>
                     <button
                       type="button"

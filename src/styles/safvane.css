@@ -984,7 +984,14 @@ footer.safvane-footer{
 .checkout-item-placeholder{background:var(--deep);}
 .checkout-item-name{font-size:14px;font-weight:500;color:var(--bone);line-height:1.35;margin-bottom:4px;word-break:break-word;}
 .checkout-item-meta{font-size:12px;color:var(--dim);margin-bottom:6px;}
+.checkout-item-qty{margin-bottom:8px;}
+.checkout-item-qty .mini-step{max-width:max-content;}
+.checkout-item-qty .mini-step button:disabled{
+  opacity:.4;cursor:not-allowed;
+}
+.checkout-item-qty .mini-step button:disabled:hover{color:var(--dim);}
 .checkout-item-price{font-size:14px;font-weight:500;color:var(--goldl);}
+.checkout-item-stock-hint{font-size:11px;color:#e8a838;margin-top:4px;}
 .checkout-item-remove{
   display:inline-flex;align-items:center;justify-content:center;gap:4px;
   min-height:34px;padding:6px 10px;margin:0;flex-shrink:0;
