@@ -12,6 +12,8 @@ export type MetaPurchasePayload = {
   content_type: "product";
   num_items: number;
   order_id?: string;
+  /** Same ID used by Conversions API for deduplication */
+  event_id?: string;
 };
 
 export type MetaAddToCartPayload = {
@@ -55,24 +57,34 @@ function whenFbqReady(run: () => void, attempts = 40) {
 /** Fire a standard Meta Pixel event once fbq is available. */
 export function trackMetaEvent(
   event: string,
-  params?: Record<string, unknown>
+  params?: Record<string, unknown>,
+  options?: { eventID?: string }
 ) {
   whenFbqReady(() => {
-    if (params) window.fbq?.("track", event, params);
-    else window.fbq?.("track", event);
+    if (params && options?.eventID) {
+      window.fbq?.("track", event, params, { eventID: options.eventID });
+    } else if (params) {
+      window.fbq?.("track", event, params);
+    } else {
+      window.fbq?.("track", event);
+    }
   });
 }
 
 export function trackMetaPurchase(payload: MetaPurchasePayload) {
-  trackMetaEvent("Purchase", {
-    value: payload.value,
-    currency: payload.currency,
-    contents: payload.contents,
-    content_ids: payload.content_ids,
-    content_type: payload.content_type,
-    num_items: payload.num_items,
-    ...(payload.order_id ? { order_id: payload.order_id } : {}),
-  });
+  trackMetaEvent(
+    "Purchase",
+    {
+      value: payload.value,
+      currency: payload.currency,
+      contents: payload.contents,
+      content_ids: payload.content_ids,
+      content_type: payload.content_type,
+      num_items: payload.num_items,
+      ...(payload.order_id ? { order_id: payload.order_id } : {}),
+    },
+    payload.event_id ? { eventID: payload.event_id } : undefined
+  );
 }
 
 export function trackMetaAddToCart(payload: MetaAddToCartPayload) {

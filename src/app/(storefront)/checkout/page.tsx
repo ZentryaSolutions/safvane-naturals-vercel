@@ -135,6 +135,7 @@ export default function CheckoutPage() {
         content_type: "product",
         num_items: itemCount,
         order_id: data.orderNumber || undefined,
+        event_id: data.eventId || undefined,
       });
       markOrderPlaced();
       router.replace("/order-confirmation");

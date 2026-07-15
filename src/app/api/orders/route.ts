@@ -2,6 +2,11 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { checkoutSchema } from "@/lib/validations";
 import { sendOrderNotifications } from "@/lib/notifications";
 import { calculateShippingFee } from "@/lib/shipping";
+import {
+  getClientIp,
+  readMetaCookies,
+  sendMetaCapiPurchase,
+} from "@/lib/meta-capi";
 import { NextResponse } from "next/server";
 
 interface CartItemPayload {
@@ -33,7 +38,9 @@ export async function POST(request: Request) {
 
     const { data: variants, error: variantError } = await supabase
       .from("product_variants")
-      .select(`*, product:products(name, slug, status, use_shop_shipping, product_free_shipping)`)
+      .select(
+        `*, product:products(id, name, slug, status, use_shop_shipping, product_free_shipping)`
+      )
       .in("id", variantIds);
 
     if (variantError || !variants?.length) {
@@ -167,10 +174,50 @@ export async function POST(request: Request) {
       whatsappUrl = notif.whatsappUrl;
     }
 
+    const eventId = `purchase_${order.id}`;
+    const nameParts = parsed.data.customer_name.trim().split(/\s+/);
+    const firstName = nameParts[0] || "";
+    const lastName = nameParts.slice(1).join(" ") || "";
+    const { fbp, fbc } = readMetaCookies(request.headers.get("cookie"));
+
+    const contents = cartItems.map((ci) => {
+      const v = variants.find((x) => x.id === ci.variantId)!;
+      const productId = (v.product as { id?: string } | null)?.id ?? v.id;
+      return {
+        id: productId,
+        quantity: ci.quantity,
+        item_price: Number(v.price),
+      };
+    });
+    const contentIds = contents.map((c) => c.id);
+    const numItems = cartItems.reduce((sum, ci) => sum + ci.quantity, 0);
+
+    // Fire-and-forget CAPI — do not block checkout if Meta is slow/down
+    void sendMetaCapiPurchase({
+      eventId,
+      value: total,
+      currency: "PKR",
+      contents,
+      contentIds,
+      numItems,
+      orderId: order.order_number || order.id,
+      email: parsed.data.customer_email,
+      phone: parsed.data.customer_phone,
+      firstName,
+      lastName,
+      city: parsed.data.city,
+      country: "pk",
+      clientIp: getClientIp(request),
+      userAgent: request.headers.get("user-agent"),
+      fbp,
+      fbc,
+    });
+
     return NextResponse.json({
       orderNumber: order.order_number,
       total,
       currency: "PKR",
+      eventId,
       whatsappUrl,
     });
   } catch (e) {
