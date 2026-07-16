@@ -113,6 +113,12 @@ export async function sendMetaCapiPurchase(
   if (input.fbp) userData.fbp = input.fbp;
   if (input.fbc) userData.fbc = input.fbc;
 
+  // external_id improves audience matching across sessions
+  const external =
+    maybeHash(input.phone, normalizePhone) ||
+    maybeHash(input.orderId, (v) => v.trim().toLowerCase());
+  if (external) userData.external_id = [external];
+
   const customData: Record<string, unknown> = {
     value: input.value,
     currency: input.currency || "PKR",

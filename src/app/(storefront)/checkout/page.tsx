@@ -15,7 +15,10 @@ import {
 import type { SiteSettings } from "@/lib/types";
 import type { CheckoutInput } from "@/lib/validations";
 import { markOrderPlaced } from "@/components/storefront/OrderConfirmationView";
-import { stashMetaPurchase } from "@/lib/meta-pixel";
+import {
+  stashMetaPurchase,
+  trackMetaInitiateCheckout,
+} from "@/lib/meta-pixel";
 
 type ShippingSettings = Pick<
   SiteSettings,
@@ -32,6 +35,7 @@ export default function CheckoutPage() {
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [formError, setFormError] = useState("");
   const placingOrder = useRef(false);
+  const initiateCheckoutTracked = useRef(false);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -55,6 +59,23 @@ export default function CheckoutPage() {
       .then((d) => setShippingSettings(d))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (initiateCheckoutTracked.current || items.length === 0) return;
+    initiateCheckoutTracked.current = true;
+    trackMetaInitiateCheckout({
+      value: subtotal,
+      currency: "PKR",
+      contents: items.map((i) => ({
+        id: i.productId,
+        quantity: i.quantity,
+        item_price: i.price,
+      })),
+      content_ids: items.map((i) => i.productId),
+      content_type: "product",
+      num_items: items.reduce((sum, i) => sum + i.quantity, 0),
+    });
+  }, [items, subtotal]);
 
   const shippingFee = calculateShippingFee(subtotal, shippingSettings, shippingItems);
   const total = subtotal + shippingFee;
@@ -136,6 +157,15 @@ export default function CheckoutPage() {
         num_items: itemCount,
         order_id: data.orderNumber || undefined,
         event_id: data.eventId || undefined,
+        user: {
+          email: form.customer_email || undefined,
+          phone: form.customer_phone,
+          firstName: firstName.trim() || undefined,
+          lastName: lastName.trim() || undefined,
+          city: form.city || undefined,
+          country: "pk",
+          externalId: data.orderNumber || form.customer_phone,
+        },
       });
       markOrderPlaced();
       router.replace("/order-confirmation");
