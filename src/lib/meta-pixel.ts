@@ -41,6 +41,7 @@ export type MetaAddToCartPayload = {
   }>;
   content_ids: string[];
   content_type: "product";
+  event_id?: string;
 };
 
 export type MetaViewContentPayload = {
@@ -49,6 +50,7 @@ export type MetaViewContentPayload = {
   content_ids: string[];
   content_type: "product";
   content_name: string;
+  event_id?: string;
 };
 
 export type MetaInitiateCheckoutPayload = {
@@ -62,6 +64,7 @@ export type MetaInitiateCheckoutPayload = {
   content_ids: string[];
   content_type: "product";
   num_items: number;
+  event_id?: string;
 };
 
 export const META_PURCHASE_KEY = "safvane-meta-purchase";
@@ -80,6 +83,44 @@ function whenFbqReady(run: () => void, attempts = 40) {
   }
   if (attempts <= 0) return;
   window.setTimeout(() => whenFbqReady(run, attempts - 1), 100);
+}
+
+export function newMetaEventId(prefix: string) {
+  const id =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  return `${prefix}_${id}`;
+}
+
+/** Mirror Pixel event to Conversions API with the same event_id. */
+function mirrorToCapi(payload: {
+  eventName: "ViewContent" | "AddToCart" | "InitiateCheckout";
+  eventId: string;
+  value?: number;
+  currency?: "PKR";
+  contents?: Array<{ id: string; quantity: number; item_price?: number }>;
+  contentIds?: string[];
+  contentName?: string;
+  numItems?: number;
+}) {
+  if (typeof window === "undefined") return;
+  void fetch("/api/meta/capi", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      eventName: payload.eventName,
+      eventId: payload.eventId,
+      eventSourceUrl: window.location.href,
+      value: payload.value,
+      currency: payload.currency || "PKR",
+      contents: payload.contents,
+      contentIds: payload.contentIds,
+      contentName: payload.contentName,
+      numItems: payload.numItems,
+    }),
+    keepalive: true,
+  }).catch(() => {});
 }
 
 /** Pakistan-friendly phone → digits with country code (Meta Advanced Matching). */
@@ -164,33 +205,79 @@ export function trackMetaPurchase(payload: MetaPurchasePayload) {
 }
 
 export function trackMetaAddToCart(payload: MetaAddToCartPayload) {
-  trackMetaEvent("AddToCart", {
+  const eventId = payload.event_id || newMetaEventId("atc");
+  trackMetaEvent(
+    "AddToCart",
+    {
+      value: payload.value,
+      currency: payload.currency,
+      contents: payload.contents,
+      content_ids: payload.content_ids,
+      content_type: payload.content_type,
+    },
+    { eventID: eventId }
+  );
+  mirrorToCapi({
+    eventName: "AddToCart",
+    eventId,
     value: payload.value,
     currency: payload.currency,
     contents: payload.contents,
-    content_ids: payload.content_ids,
-    content_type: payload.content_type,
+    contentIds: payload.content_ids,
+    numItems: payload.contents.reduce((s, c) => s + c.quantity, 0),
   });
 }
 
 export function trackMetaViewContent(payload: MetaViewContentPayload) {
-  trackMetaEvent("ViewContent", {
+  const eventId = payload.event_id || newMetaEventId("vc");
+  trackMetaEvent(
+    "ViewContent",
+    {
+      value: payload.value,
+      currency: payload.currency,
+      content_ids: payload.content_ids,
+      content_type: payload.content_type,
+      content_name: payload.content_name,
+    },
+    { eventID: eventId }
+  );
+  mirrorToCapi({
+    eventName: "ViewContent",
+    eventId,
     value: payload.value,
     currency: payload.currency,
-    content_ids: payload.content_ids,
-    content_type: payload.content_type,
-    content_name: payload.content_name,
+    contentIds: payload.content_ids,
+    contentName: payload.content_name,
+    contents: payload.content_ids.map((id) => ({
+      id,
+      quantity: 1,
+      item_price: payload.value,
+    })),
   });
 }
 
 export function trackMetaInitiateCheckout(payload: MetaInitiateCheckoutPayload) {
-  trackMetaEvent("InitiateCheckout", {
+  const eventId = payload.event_id || newMetaEventId("ic");
+  trackMetaEvent(
+    "InitiateCheckout",
+    {
+      value: payload.value,
+      currency: payload.currency,
+      contents: payload.contents,
+      content_ids: payload.content_ids,
+      content_type: payload.content_type,
+      num_items: payload.num_items,
+    },
+    { eventID: eventId }
+  );
+  mirrorToCapi({
+    eventName: "InitiateCheckout",
+    eventId,
     value: payload.value,
     currency: payload.currency,
     contents: payload.contents,
-    content_ids: payload.content_ids,
-    content_type: payload.content_type,
-    num_items: payload.num_items,
+    contentIds: payload.content_ids,
+    numItems: payload.num_items,
   });
 }
 

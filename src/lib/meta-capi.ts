@@ -2,31 +2,29 @@ import { createHash } from "crypto";
 
 const GRAPH_VERSION = "v21.0";
 
-function getPixelId() {
-  return process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || "1591811942338255";
-}
-
-function getAccessToken() {
-  return process.env.META_CAPI_ACCESS_TOKEN?.trim() || "";
-}
-
-function getTestEventCode() {
-  return process.env.META_CAPI_TEST_EVENT_CODE?.trim() || "";
-}
+export type MetaCapiEventName =
+  | "Purchase"
+  | "ViewContent"
+  | "AddToCart"
+  | "InitiateCheckout";
 
 type CapContent = {
   id: string;
   quantity: number;
-  item_price: number;
+  item_price?: number;
 };
 
-export type CapPurchaseInput = {
+export type CapEventInput = {
+  eventName: MetaCapiEventName;
   eventId: string;
-  value: number;
+  eventSourceUrl: string;
+  value?: number;
   currency?: "PKR";
-  contents: CapContent[];
-  contentIds: string[];
-  numItems: number;
+  contents?: CapContent[];
+  contentIds?: string[];
+  contentName?: string;
+  contentType?: "product";
+  numItems?: number;
   orderId?: string;
   email?: string | null;
   phone?: string | null;
@@ -39,6 +37,26 @@ export type CapPurchaseInput = {
   fbp?: string | null;
   fbc?: string | null;
 };
+
+export type CapPurchaseInput = Omit<CapEventInput, "eventName" | "eventSourceUrl"> & {
+  eventId: string;
+  value: number;
+  contents: CapContent[];
+  contentIds: string[];
+  numItems: number;
+};
+
+function getPixelId() {
+  return process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || "1591811942338255";
+}
+
+function getAccessToken() {
+  return process.env.META_CAPI_ACCESS_TOKEN?.trim() || "";
+}
+
+function getTestEventCode() {
+  return process.env.META_CAPI_TEST_EVENT_CODE?.trim() || "";
+}
 
 function sha256(value: string) {
   return createHash("sha256").update(value).digest("hex");
@@ -73,22 +91,7 @@ function maybeHash(
   return sha256(normalizer(value));
 }
 
-/**
- * Send a Purchase event via Meta Conversions API (server → Meta).
- * Never throws to the caller — logs and returns false on failure.
- */
-export async function sendMetaCapiPurchase(
-  input: CapPurchaseInput
-): Promise<boolean> {
-  const accessToken = getAccessToken();
-  const pixelId = getPixelId();
-  const testEventCode = getTestEventCode();
-
-  if (!accessToken || !pixelId) {
-    console.warn("[meta-capi] Missing META_CAPI_ACCESS_TOKEN or pixel id");
-    return false;
-  }
-
+function buildUserData(input: CapEventInput): Record<string, unknown> {
   const userData: Record<string, unknown> = {
     country: [sha256((input.country || "pk").toLowerCase())],
   };
@@ -113,41 +116,61 @@ export async function sendMetaCapiPurchase(
   if (input.fbp) userData.fbp = input.fbp;
   if (input.fbc) userData.fbc = input.fbc;
 
-  // external_id improves audience matching across sessions
   const external =
     maybeHash(input.phone, normalizePhone) ||
     maybeHash(input.orderId, (v) => v.trim().toLowerCase());
   if (external) userData.external_id = [external];
 
-  const customData: Record<string, unknown> = {
-    value: input.value,
-    currency: input.currency || "PKR",
-    contents: input.contents.map((c) => ({
+  return userData;
+}
+
+function buildCustomData(input: CapEventInput): Record<string, unknown> {
+  const customData: Record<string, unknown> = {};
+  if (typeof input.value === "number") customData.value = input.value;
+  customData.currency = input.currency || "PKR";
+  if (input.contentIds?.length) customData.content_ids = input.contentIds;
+  customData.content_type = input.contentType || "product";
+  if (input.contentName) customData.content_name = input.contentName;
+  if (typeof input.numItems === "number") customData.num_items = input.numItems;
+  if (input.orderId) customData.order_id = input.orderId;
+  if (input.contents?.length) {
+    customData.contents = input.contents.map((c) => ({
       id: c.id,
       quantity: c.quantity,
-      item_price: c.item_price,
-    })),
-    content_ids: input.contentIds,
-    content_type: "product",
-    num_items: input.numItems,
-  };
-  if (input.orderId) customData.order_id = input.orderId;
+      ...(typeof c.item_price === "number" ? { item_price: c.item_price } : {}),
+    }));
+  }
+  return customData;
+}
+
+/**
+ * Send any standard ecommerce event via Meta Conversions API.
+ * Never throws — logs and returns false on failure.
+ */
+export async function sendMetaCapiEvent(input: CapEventInput): Promise<boolean> {
+  const accessToken = getAccessToken();
+  const pixelId = getPixelId();
+  const testEventCode = getTestEventCode();
+
+  if (!accessToken || !pixelId) {
+    console.warn("[meta-capi] Missing META_CAPI_ACCESS_TOKEN or pixel id");
+    return false;
+  }
 
   const body: Record<string, unknown> = {
     data: [
       {
-        event_name: "Purchase",
+        event_name: input.eventName,
         event_time: Math.floor(Date.now() / 1000),
         event_id: input.eventId,
-        event_source_url: "https://www.safvane.com/order-confirmation",
+        event_source_url: input.eventSourceUrl,
         action_source: "website",
-        user_data: userData,
-        custom_data: customData,
+        user_data: buildUserData(input),
+        custom_data: buildCustomData(input),
       },
     ],
   };
 
-  // Required for events to appear in Events Manager → Test events
   if (testEventCode) {
     body.test_event_code = testEventCode;
   }
@@ -166,20 +189,30 @@ export async function sendMetaCapiPurchase(
 
     if (!res.ok || json.error) {
       console.error(
-        "[meta-capi] Purchase failed:",
+        `[meta-capi] ${input.eventName} failed:`,
         json.error?.message || JSON.stringify(json)
       );
       return false;
     }
 
     console.info(
-      `[meta-capi] Purchase ok events_received=${json.events_received ?? "?"} event_id=${input.eventId}`
+      `[meta-capi] ${input.eventName} ok events_received=${json.events_received ?? "?"} event_id=${input.eventId}`
     );
     return true;
   } catch (err) {
-    console.error("[meta-capi] Purchase request error:", err);
+    console.error(`[meta-capi] ${input.eventName} request error:`, err);
     return false;
   }
+}
+
+export async function sendMetaCapiPurchase(
+  input: CapPurchaseInput
+): Promise<boolean> {
+  return sendMetaCapiEvent({
+    ...input,
+    eventName: "Purchase",
+    eventSourceUrl: "https://www.safvane.com/order-confirmation",
+  });
 }
 
 export function readMetaCookies(cookieHeader: string | null): {
