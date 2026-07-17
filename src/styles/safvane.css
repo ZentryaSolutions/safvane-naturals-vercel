@@ -1130,6 +1130,12 @@ footer.safvane-footer{
 }
 .order-confirm-wa:hover{background:rgba(37,211,102,.18);}
 .order-confirm-cta{margin-top:8px;}
+.order-confirm-actions{
+  display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;max-width:320px;
+}
+.order-confirm-actions .btn{width:100%;justify-content:center;}
+.order-confirm-secondary{font-size:14px;color:var(--dim);text-decoration:none;}
+.order-confirm-secondary:hover{color:var(--goldl);}
 .shipping-free{color:var(--gold);font-weight:600;}
 .shipping-hint{font-size:12px;color:var(--dim);margin:-8px 0 12px;line-height:1.4;}
 
@@ -1928,3 +1934,142 @@ footer.safvane-footer{
   .ci-total{margin-bottom:0;font-size:16px;}
   .ci-meta{width:100%;}
 }
+
+/* Track order */
+.track-page{
+  position:relative;padding:56px 24px 100px;overflow:hidden;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(201,162,39,.12), transparent 55%),
+    linear-gradient(180deg, var(--deep) 0%, var(--bg) 40%, var(--bg) 100%);
+}
+.storefront[data-theme="light"] .track-page{
+  background:
+    radial-gradient(ellipse 70% 45% at 50% -8%, rgba(201,162,39,.16), transparent 50%),
+    linear-gradient(180deg, #f7f3ea 0%, var(--bg) 42%, var(--bg) 100%);
+}
+.track-shell{max-width:720px;margin:0 auto;position:relative;z-index:1;}
+.track-hero{text-align:center;margin-bottom:28px;}
+.track-eyebrow{
+  font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--dim);margin-bottom:14px;
+}
+.track-hero h1{
+  font-family:var(--serif);font-size:clamp(34px,5.5vw,52px);font-weight:400;margin:0;line-height:1.15;
+}
+.track-hero h1 em{font-style:italic;color:var(--goldl);}
+.track-sub{
+  color:var(--dim);font-size:15px;line-height:1.65;max-width:420px;margin:14px auto 0;
+}
+.track-form{
+  background:var(--card);border:1px solid var(--line2);border-radius:14px;
+  padding:20px;box-shadow:0 12px 40px rgba(24,22,15,.04);
+}
+.track-input-row{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end;
+}
+.track-input-field{margin-bottom:0 !important;}
+.track-input-field label{margin-bottom:8px;}
+.track-input-field input{
+  font-size:16px;letter-spacing:.02em;font-variant-numeric:tabular-nums;
+}
+.track-submit{
+  min-width:132px;justify-content:center;height:48px;padding:0 22px;margin:0;
+}
+.track-submit span{display:inline-flex;align-items:center;gap:8px;}
+.track-spinner{animation:checkout-spin 1s linear infinite;}
+.track-error{margin:14px 0 0;}
+.track-result{margin-top:24px;display:flex;flex-direction:column;gap:14px;}
+.track-status-banner{
+  display:flex;align-items:flex-start;gap:14px;
+  padding:20px 22px;border-radius:14px;
+  border:1px solid rgba(201,162,39,.35);
+  background:linear-gradient(135deg, rgba(201,162,39,.14), rgba(201,162,39,.04));
+}
+.storefront[data-theme="light"] .track-status-banner{
+  background:linear-gradient(135deg, #fff8e8, #faf6ec);
+  border-color:rgba(122,96,16,.22);
+}
+.track-status-banner-icon{
+  width:44px;height:44px;border-radius:12px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(201,162,39,.16);color:var(--goldl);
+}
+.track-status-label{
+  font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--dim);margin:0 0 6px;
+}
+.track-shipment-status{
+  font-family:var(--serif);font-size:clamp(22px,3.5vw,28px);font-weight:400;
+  color:var(--bone);margin:0;line-height:1.25;
+}
+.track-status-time{
+  margin:8px 0 0;font-size:13px;color:var(--dim);font-variant-numeric:tabular-nums;
+}
+.track-card{
+  background:var(--card);border:1px solid var(--line2);border-radius:14px;padding:20px 22px;
+}
+.track-meta-grid{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 20px;margin:0;
+}
+.track-meta-item{display:flex;gap:10px;align-items:flex-start;min-width:0;}
+.track-meta-ico{
+  width:28px;height:28px;border-radius:8px;flex-shrink:0;margin-top:2px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--deep);color:var(--gold);border:1px solid var(--line2);
+}
+.track-meta-label{
+  font-size:11px;color:var(--dim);margin:0 0 4px;text-transform:uppercase;letter-spacing:.06em;
+}
+.track-meta-value{margin:0;font-size:14.5px;color:var(--bone);word-break:break-word;line-height:1.4;}
+.track-id{font-family:var(--mono);font-size:13.5px;color:var(--goldl);letter-spacing:.02em;}
+.track-journey-title{
+  font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.14em;
+  text-transform:uppercase;margin:0 0 20px;color:var(--goldl);
+}
+.track-timeline{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;}
+.track-timeline li{
+  position:relative;display:flex;gap:16px;padding:0 0 24px 2px;
+}
+.track-timeline li:last-child{padding-bottom:0;}
+.track-timeline-marker{
+  width:36px;height:36px;border-radius:50%;flex-shrink:0;z-index:1;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--deep);color:var(--dim);border:1.5px solid var(--line2);
+}
+.track-timeline li.is-latest .track-timeline-marker{
+  background:rgba(201,162,39,.16);color:var(--goldl);border-color:var(--gold);
+  box-shadow:0 0 0 4px rgba(201,162,39,.12);
+}
+.storefront[data-theme="light"] .track-timeline li.is-latest .track-timeline-marker{
+  background:#fff8e8;color:var(--goldd);border-color:var(--gold);
+}
+.track-timeline li:not(:last-child)::before{
+  content:"";position:absolute;left:19px;top:36px;bottom:0;width:1.5px;background:var(--line2);
+}
+.track-timeline-body{min-width:0;padding-top:6px;}
+.track-timeline strong{
+  display:block;font-size:15px;font-weight:600;color:var(--bone);margin-bottom:5px;line-height:1.35;
+}
+.track-timeline li.is-latest strong{color:var(--goldl);}
+.track-timeline time{
+  display:block;font-size:12.5px;color:var(--dim);line-height:1.4;
+  font-variant-numeric:tabular-nums;
+}
+@media(max-width:720px){
+  .track-page{padding:36px 16px 88px;}
+  .track-input-row{grid-template-columns:1fr;gap:14px;}
+  .track-submit{width:100%;height:50px;}
+  .track-meta-grid{grid-template-columns:1fr;gap:14px;}
+  .track-form,.track-card,.track-status-banner{padding:16px;}
+  .track-status-banner{gap:12px;}
+  .track-status-banner-icon{width:40px;height:40px;}
+  .track-timeline li{gap:14px;padding-bottom:22px;}
+  .track-timeline-marker{width:34px;height:34px;}
+  .track-timeline li:not(:last-child)::before{left:17px;top:34px;}
+}
+@media(min-width:900px){
+  .track-shell{max-width:760px;}
+  .track-form{padding:22px 24px;}
+  .track-card,.track-status-banner{padding:22px 24px;}
+}
+

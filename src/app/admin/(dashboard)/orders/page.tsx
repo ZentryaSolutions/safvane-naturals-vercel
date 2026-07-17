@@ -48,6 +48,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
               <th>Customer</th>
               <th>Total</th>
               <th>Status</th>
+              <th>Tracking</th>
               <th>Date</th>
             </tr>
           </thead>
@@ -69,6 +70,22 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
                 <td>
                   <span className="admin-badge admin-badge-draft">{order.status}</span>
                 </td>
+                <td style={{ fontSize: "0.8125rem" }}>
+                  {order.tracking_number ? (
+                    <div>
+                      <div style={{ fontFamily: "ui-monospace, monospace" }}>
+                        {order.tracking_number}
+                      </div>
+                      {order.tracking_status && (
+                        <div style={{ color: "#71717a", marginTop: 2 }}>
+                          {order.tracking_status}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <span style={{ color: "#a1a1aa" }}>—</span>
+                  )}
+                </td>
                 <td style={{ color: "#71717a" }}>
                   {new Date(order.created_at).toLocaleDateString("en-PK")}
                 </td>
@@ -76,7 +93,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
             ))}
             {(!orders || orders.length === 0) && (
               <tr>
-                <td colSpan={5} style={{ textAlign: "center", padding: 32, color: "#71717a" }}>
+                <td colSpan={6} style={{ textAlign: "center", padding: 32, color: "#71717a" }}>
                   No orders found.
                 </td>
               </tr>

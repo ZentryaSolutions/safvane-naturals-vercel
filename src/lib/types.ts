@@ -133,6 +133,10 @@ export interface Order {
   subtotal: number;
   shipping_fee: number;
   total: number;
+  tracking_number: string | null;
+  courier: string | null;
+  tracking_status: string | null;
+  tracking_synced_at: string | null;
   created_at: string;
 }
 

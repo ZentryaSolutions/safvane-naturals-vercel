@@ -136,6 +136,10 @@ CREATE TABLE orders (
   subtotal NUMERIC(10, 2) NOT NULL,
   shipping_fee NUMERIC(10, 2) NOT NULL,
   total NUMERIC(10, 2) NOT NULL,
+  tracking_number TEXT,
+  courier TEXT DEFAULT 'postex',
+  tracking_status TEXT,
+  tracking_synced_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

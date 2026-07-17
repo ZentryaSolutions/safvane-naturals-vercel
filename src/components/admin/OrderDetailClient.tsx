@@ -11,7 +11,10 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { deleteOrder, updateOrder } from "@/app/admin/actions";
+import {
+  deleteOrder,
+  updateOrder,
+} from "@/app/admin/actions";
 import { OrderCommunicationsPanel } from "@/components/admin/OrderCommunicationsPanel";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
 import type { Order, OrderItem, OrderStatus } from "@/lib/types";
@@ -71,6 +74,8 @@ export function OrderDetailClient({
     order_note: initialOrder.order_note ?? "",
     status: initialOrder.status,
     shipping_fee: Number(initialOrder.shipping_fee),
+    tracking_number: initialOrder.tracking_number ?? "",
+    courier: initialOrder.courier ?? "postex",
   });
 
   useEffect(() => {
@@ -84,6 +89,8 @@ export function OrderDetailClient({
       order_note: initialOrder.order_note ?? "",
       status: initialOrder.status,
       shipping_fee: Number(initialOrder.shipping_fee),
+      tracking_number: initialOrder.tracking_number ?? "",
+      courier: initialOrder.courier ?? "postex",
     });
   }, [initialOrder]);
 
@@ -109,6 +116,10 @@ export function OrderDetailClient({
       order_note: form.order_note || null,
       status: form.status,
       shipping_fee: form.shipping_fee,
+      tracking_number: form.tracking_number || null,
+      courier: form.tracking_number.trim()
+        ? form.courier || "postex"
+        : null,
     });
 
     if ("error" in result && result.error) {
@@ -133,6 +144,8 @@ export function OrderDetailClient({
       order_note: order.order_note ?? "",
       status: order.status,
       shipping_fee: Number(order.shipping_fee),
+      tracking_number: order.tracking_number ?? "",
+      courier: order.courier ?? "postex",
     });
     setEditing(false);
   };
@@ -354,6 +367,21 @@ export function OrderDetailClient({
                 />
               </div>
               <div className="field admin-order-form-full">
+                <label>Tracking ID</label>
+                <input
+                  value={form.tracking_number}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setForm((f) => ({
+                      ...f,
+                      tracking_number: value,
+                      courier: value.trim() ? "postex" : f.courier,
+                    }));
+                  }}
+                  autoComplete="off"
+                />
+              </div>
+              <div className="field admin-order-form-full">
                 <label>Order note</label>
                 <textarea
                   rows={3}
@@ -365,34 +393,48 @@ export function OrderDetailClient({
               </div>
             </div>
           ) : (
-            <dl className="admin-order-dl">
-              <div>
-                <dt>Name</dt>
-                <dd>{order.customer_name}</dd>
-              </div>
-              <div>
-                <dt>Phone</dt>
-                <dd>{order.customer_phone}</dd>
-              </div>
-              {order.customer_email && (
+            <>
+              <dl className="admin-order-dl">
                 <div>
-                  <dt>Email</dt>
-                  <dd>{order.customer_email}</dd>
+                  <dt>Name</dt>
+                  <dd>{order.customer_name}</dd>
                 </div>
-              )}
-              <div>
-                <dt>Address</dt>
-                <dd>
-                  {order.delivery_address}, {order.city}, Pakistan
-                </dd>
-              </div>
-              {order.order_note && (
                 <div>
-                  <dt>Customer note</dt>
-                  <dd>{order.order_note}</dd>
+                  <dt>Phone</dt>
+                  <dd>{order.customer_phone}</dd>
                 </div>
-              )}
-            </dl>
+                {order.customer_email && (
+                  <div>
+                    <dt>Email</dt>
+                    <dd>{order.customer_email}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt>Address</dt>
+                  <dd>
+                    {order.delivery_address}, {order.city}, Pakistan
+                  </dd>
+                </div>
+                <div>
+                  <dt>Tracking ID</dt>
+                  <dd className="admin-order-tracking-id">
+                    {order.tracking_number || "—"}
+                  </dd>
+                </div>
+                {order.tracking_status && (
+                  <div>
+                    <dt>Courier status</dt>
+                    <dd>{order.tracking_status}</dd>
+                  </div>
+                )}
+                {order.order_note && (
+                  <div>
+                    <dt>Customer note</dt>
+                    <dd>{order.order_note}</dd>
+                  </div>
+                )}
+              </dl>
+            </>
           )}
         </section>
 

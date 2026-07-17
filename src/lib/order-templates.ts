@@ -35,7 +35,7 @@ export const ORDER_TEMPLATES: OrderTemplateMeta[] = [
   {
     id: "shipped",
     label: "Shipped",
-    description: "Parcel has been dispatched",
+    description: "Parcel dispatched — includes tracking ID when saved",
     category: "status",
   },
   {
@@ -91,6 +91,24 @@ function itemsHtml(items: OrderItem[]) {
     .join("");
 }
 
+function trackingBlock(order: OrderWithItems) {
+  const id = order.tracking_number?.trim();
+  if (!id) return "";
+  return `
+
+Tracking ID: ${id}
+Track your order: ${WEBSITE_URL}/track-order`;
+}
+
+function trackingWhatsAppBlock(order: OrderWithItems) {
+  const id = order.tracking_number?.trim();
+  if (!id) return "";
+  return `
+
+*Tracking ID:* ${id}
+Track anytime: ${WEBSITE_URL}/track-order`;
+}
+
 export function getOrderEmailSubject(
   templateId: OrderTemplateId,
   order: OrderWithItems
@@ -138,7 +156,7 @@ Shipping: ${Number(order.shipping_fee) === 0 ? "FREE" : formatPrice(Number(order
 Total (COD): ${total}
 
 Delivery address:
-${address}
+${address}${trackingBlock(order)}
 ${order.order_note ? `\nYour note: ${order.order_note}` : ""}
 
 Questions? WhatsApp ${CONTACT.phoneDisplay} or email ${CONTACT.email}
@@ -197,6 +215,15 @@ export function getOrderEmailHtml(
           </div>
           <p style="margin:0 0 8px;font-size:13px;color:#9a9588;">Delivery address</p>
           <p style="margin:0 0 20px;color:#e8e4dc;">${address}</p>
+          ${
+            order.tracking_number?.trim()
+              ? `<div style="margin:0 0 20px;padding:12px 14px;background:rgba(201,162,39,.1);border:1px solid rgba(201,162,39,.25);border-radius:8px;">
+            <p style="margin:0 0 6px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#c9a227;">Tracking</p>
+            <p style="margin:0 0 8px;color:#e8d48a;font-family:ui-monospace,monospace;">${escapeHtml(order.tracking_number.trim())}</p>
+            <p style="margin:0;font-size:13px;"><a href="${WEBSITE_URL}/track-order" style="color:#c9a227;">Track your order →</a></p>
+          </div>`
+              : ""
+          }
           ${templateId === "payment_reminder" ? `<p style="margin:0 0 20px;padding:12px 14px;background:rgba(201,162,39,.1);border:1px solid rgba(201,162,39,.25);border-radius:8px;color:#e8d48a;">Please keep <strong>${formatPrice(Number(order.total))}</strong> ready for cash on delivery.</p>` : ""}
           <p style="margin:0;font-size:13px;color:#9a9588;">Questions? WhatsApp <a href="https://wa.me/${CONTACT.whatsapp}" style="color:#c9a227;">${CONTACT.phoneDisplay}</a></p>
         </td></tr>
@@ -274,8 +301,8 @@ ${WEBSITE_URL}`,
     shipped: `Hi ${name}! Great news — your order *${order.order_number}* has been shipped and is on its way to you. 📦
 
 Total (COD): ${total}
-Address: ${address}`,
-    out_for_delivery: `Hi ${name}! Your order *${order.order_number}* is *out for delivery today*. Please keep your phone available and ${total} ready for COD. 🚚`,
+Address: ${address}${trackingWhatsAppBlock(order)}`,
+    out_for_delivery: `Hi ${name}! Your order *${order.order_number}* is *out for delivery today*. Please keep your phone available and ${total} ready for COD. 🚚${trackingWhatsAppBlock(order)}`,
     delivered: `Hi ${name}! Your order *${order.order_number}* has been delivered. Thank you for choosing Safvane Naturals! 🌿
 
 We'd love your feedback — reply here anytime.`,

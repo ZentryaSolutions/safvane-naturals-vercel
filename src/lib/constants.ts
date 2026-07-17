@@ -50,6 +50,7 @@ export const TRUST_BADGES = [
 
 export const NAV_LINKS = [
   { href: "/shop", label: "Shop" },
+  { href: "/track-order", label: "Track Order" },
   { href: "/about", label: "About" },
   { href: "/faq", label: "FAQ" },
   { href: "/contact", label: "Contact" },

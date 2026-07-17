@@ -47,6 +47,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
       lastModified: new Date(),
     },
+    {
+      url: absoluteUrl("/track-order"),
+      changeFrequency: "monthly",
+      priority: 0.75,
+      lastModified: new Date(),
+    },
   ];
 
   const productPages: MetadataRoute.Sitemap = products.map((p) => ({

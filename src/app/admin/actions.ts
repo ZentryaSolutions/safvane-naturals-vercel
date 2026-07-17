@@ -207,19 +207,52 @@ export async function updateOrder(
     order_note: string | null;
     status: string;
     shipping_fee: number;
+    tracking_number?: string | null;
+    courier?: string | null;
   }
 ) {
   const supabase = await createClient();
 
   const { data: current, error: fetchError } = await supabase
     .from("orders")
-    .select("status, subtotal")
+    .select("status, subtotal, tracking_number")
     .eq("id", orderId)
     .single();
 
   if (fetchError || !current) {
     return { error: fetchError?.message ?? "Order not found" };
   }
+
+  const trackingNumber =
+    data.tracking_number !== undefined
+      ? data.tracking_number?.trim() || null
+      : undefined;
+  const courier =
+    data.courier !== undefined
+      ? data.courier?.trim() || null
+      : trackingNumber
+        ? "postex"
+        : undefined;
+
+  let nextStatus = data.status;
+  if (
+    trackingNumber &&
+    trackingNumber !== current.tracking_number &&
+    (nextStatus === "new" || nextStatus === "processing")
+  ) {
+    nextStatus = "shipped";
+  }
+
+  const trackingFields =
+    trackingNumber !== undefined
+      ? {
+          tracking_number: trackingNumber,
+          courier: courier ?? (trackingNumber ? "postex" : null),
+          ...(trackingNumber !== current.tracking_number
+            ? { tracking_status: null, tracking_synced_at: null }
+            : {}),
+        }
+      : {};
 
   if (data.status === "cancelled" && current.status !== "cancelled") {
     const restore = await updateOrderStatus(orderId, "cancelled");
@@ -236,6 +269,7 @@ export async function updateOrder(
         shipping_fee: data.shipping_fee,
         total: Number(current.subtotal) + data.shipping_fee,
         status: "cancelled",
+        ...trackingFields,
       })
       .eq("id", orderId);
     if (error) return { error: error.message };
@@ -255,9 +289,10 @@ export async function updateOrder(
       delivery_address: data.delivery_address.trim(),
       city: data.city.trim(),
       order_note: data.order_note?.trim() || null,
-      status: data.status,
+      status: nextStatus,
       shipping_fee: data.shipping_fee,
       total,
+      ...trackingFields,
     })
     .eq("id", orderId);
 
@@ -265,6 +300,103 @@ export async function updateOrder(
   revalidatePath("/admin/orders");
   revalidatePath(`/admin/orders/${orderId}`);
   return { success: true };
+}
+
+/** Quick-save PostEx tracking ID without editing the full order. */
+export async function saveOrderTracking(
+  orderId: string,
+  trackingNumber: string | null
+) {
+  const supabase = await createClient();
+  const cleaned = trackingNumber?.trim() || null;
+
+  const { data: current, error: fetchError } = await supabase
+    .from("orders")
+    .select("status, tracking_number")
+    .eq("id", orderId)
+    .single();
+
+  if (fetchError || !current) {
+    return { error: fetchError?.message ?? "Order not found" };
+  }
+
+  let nextStatus = current.status as string;
+  if (
+    cleaned &&
+    cleaned !== current.tracking_number &&
+    (current.status === "new" || current.status === "processing")
+  ) {
+    nextStatus = "shipped";
+  }
+
+  const { error } = await supabase
+    .from("orders")
+    .update({
+      tracking_number: cleaned,
+      courier: cleaned ? "postex" : null,
+      status: nextStatus,
+      ...(cleaned !== current.tracking_number
+        ? { tracking_status: null, tracking_synced_at: null }
+        : {}),
+    })
+    .eq("id", orderId);
+
+  if (error) return { error: error.message };
+  revalidatePath("/admin/orders");
+  revalidatePath(`/admin/orders/${orderId}`);
+  return { success: true as const, status: nextStatus };
+}
+
+export async function refreshOrderTracking(orderId: string) {
+  const supabase = await createClient();
+  const { data: order, error: fetchError } = await supabase
+    .from("orders")
+    .select("id, tracking_number, courier")
+    .eq("id", orderId)
+    .single();
+
+  if (fetchError || !order) {
+    return { error: fetchError?.message ?? "Order not found" };
+  }
+
+  if (!order.tracking_number?.trim()) {
+    return { error: "Add a PostEx tracking ID first." };
+  }
+
+  if ((order.courier || "postex") !== "postex") {
+    return { error: "Live refresh is only available for PostEx shipments." };
+  }
+
+  const { trackPostExOrder, isPostExConfigured } = await import("@/lib/postex");
+  if (!isPostExConfigured()) {
+    return {
+      error:
+        "POSTEX_API_TOKEN is missing. Add it in environment variables on the server.",
+    };
+  }
+
+  const tracked = await trackPostExOrder(order.tracking_number);
+  if (!tracked.ok) {
+    return { error: tracked.error };
+  }
+
+  const { error } = await supabase
+    .from("orders")
+    .update({
+      tracking_status: tracked.status,
+      tracking_synced_at: new Date().toISOString(),
+    })
+    .eq("id", orderId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/orders");
+  revalidatePath(`/admin/orders/${orderId}`);
+  return {
+    success: true as const,
+    status: tracked.status,
+    history: tracked.history,
+  };
 }
 
 async function restoreOrderStock(orderId: string) {

@@ -44,13 +44,19 @@ export function OrderConfirmationView() {
         </h1>
         <p className="order-confirm-lead">
           Thank you for your order. We have received it and will be in touch
-          soon.
+          soon. Once your parcel ships, use the PostEx tracking ID on our Track
+          Order page anytime.
         </p>
       </div>
 
-      <Link href="/shop" className="btn order-confirm-cta">
-        <span>Continue Shopping</span>
-      </Link>
+      <div className="order-confirm-actions">
+        <Link href="/track-order" className="btn order-confirm-cta">
+          <span>Track order</span>
+        </Link>
+        <Link href="/shop" className="btn-ghost order-confirm-secondary">
+          Continue shopping
+        </Link>
+      </div>
     </div>
   );
 }
