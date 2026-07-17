@@ -13,6 +13,11 @@ export function OrderConfirmationView() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    // Ensure confirmation starts at top (mobile checkout scroll can linger)
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+
     // Fire Purchase on confirmation page load (once per completed checkout)
     const purchase = consumeMetaPurchase();
     if (purchase) {

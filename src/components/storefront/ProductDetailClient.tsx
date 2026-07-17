@@ -13,20 +13,12 @@ import { trackMetaViewContent } from "@/lib/meta-pixel";
 import { FreeShippingBadge } from "@/components/storefront/FreeShippingBadge";
 import { productHasActivePromo, productShowsFreeShipping } from "@/lib/shipping";
 import { ShopProductCard } from "@/components/storefront/ShopProductCard";
-import { WhatsAppButton } from "@/components/storefront/WhatsAppButton";
 import { ProductReviewsSection } from "@/components/storefront/ProductReviewsSection";
 import {
   formatPrice,
-  getWhatsAppLink,
   PLACEHOLDER_IMAGE,
 } from "@/lib/utils";
-import {
-  DEFAULT_DELIVERY_RETURNS,
-  CONTACT,
-  getWhatsAppOrderMessage,
-  WHATSAPP_DEFAULT_MESSAGE,
-  WHATSAPP_NUMBER,
-} from "@/lib/constants";
+import { DEFAULT_DELIVERY_RETURNS } from "@/lib/constants";
 import type { ProductReview, ProductReviewSummary, ProductWithDetails, SiteSettings } from "@/lib/types";
 
 interface ProductDetailClientProps {
@@ -139,10 +131,6 @@ export function ProductDetailClient({
       : null;
 
   const lineTotal = formatPrice(Number(selectedVariant.price) * quantity);
-  const whatsappHelpUrl = getWhatsAppLink(
-    WHATSAPP_NUMBER,
-    WHATSAPP_DEFAULT_MESSAGE
-  );
 
   const productDetailsContent = appendBenefitsToContent(
     product.description ?? "",
@@ -210,28 +198,65 @@ export function ProductDetailClient({
               </div>
             )}
 
-            {active?.type === "video" ? (
-              <div className="pdp-video-stage">
-                <ProductVideoPlayer
-                  key={active.id}
-                  className="pdp-video-player"
-                  src={active.src}
-                  poster={active.poster}
-                  controls
-                  preload="metadata"
+            <div className="pdp-stage-wrap">
+              {active?.type === "video" ? (
+                <div className="pdp-video-stage">
+                  <ProductVideoPlayer
+                    key={active.id}
+                    className="pdp-video-player"
+                    src={active.src}
+                    poster={active.poster}
+                    controls
+                    preload="metadata"
+                  />
+                </div>
+              ) : (
+                <ProductImageZoom
+                  src={active?.src ?? PLACEHOLDER_IMAGE}
+                  alt={active?.type === "image" ? active.alt : product.name}
+                  priority
+                  onSwipeLeft={() =>
+                    setActiveMedia((i) =>
+                      gallery.length ? (i + 1) % gallery.length : i
+                    )
+                  }
+                  onSwipeRight={() =>
+                    setActiveMedia((i) =>
+                      gallery.length
+                        ? (i - 1 + gallery.length) % gallery.length
+                        : i
+                    )
+                  }
                 />
-              </div>
-            ) : (
-              <ProductImageZoom
-                src={active?.src ?? PLACEHOLDER_IMAGE}
-                alt={active?.type === "image" ? active.alt : product.name}
-                priority
-                onSwipeLeft={() =>
-                  setActiveMedia((i) => Math.min(gallery.length - 1, i + 1))
-                }
-                onSwipeRight={() => setActiveMedia((i) => Math.max(0, i - 1))}
-              />
-            )}
+              )}
+
+              {gallery.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    className="pdp-stage-nav pdp-stage-nav--prev"
+                    onClick={() =>
+                      setActiveMedia(
+                        (i) => (i - 1 + gallery.length) % gallery.length
+                      )
+                    }
+                    aria-label="Previous media"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    type="button"
+                    className="pdp-stage-nav pdp-stage-nav--next"
+                    onClick={() =>
+                      setActiveMedia((i) => (i + 1) % gallery.length)
+                    }
+                    aria-label="Next media"
+                  >
+                    ›
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
@@ -359,66 +384,24 @@ export function ProductDetailClient({
 
             <div className="pdp-acts">
               {selectedVariant.stock_status === "in_stock" ? (
-                <>
-                  <div className="pdp-acts-row">
-                    <AddToCartButton
-                      variant={selectedVariant}
-                      product={product}
-                      quantity={quantity}
-                      label={`Add to Cart — ${lineTotal}`}
-                    />
-                    <BuyNowButton
-                      variant={selectedVariant}
-                      product={product}
-                      quantity={quantity}
-                    />
-                  </div>
-                  <WhatsAppButton
-                    message={getWhatsAppOrderMessage(
-                      product.name,
-                      selectedVariant.variant_label,
-                      lineTotal,
-                      quantity
-                    )}
-                    label="Order on WhatsApp"
-                    className="btn-wa btn-wa-block"
+                <div className="pdp-acts-row">
+                  <AddToCartButton
+                    variant={selectedVariant}
+                    product={product}
+                    quantity={quantity}
+                    label={`Add to Cart — ${lineTotal}`}
                   />
-                </>
+                  <BuyNowButton
+                    variant={selectedVariant}
+                    product={product}
+                    quantity={quantity}
+                  />
+                </div>
               ) : (
                 <button type="button" className="btn" disabled>
                   Out of Stock
                 </button>
               )}
-            </div>
-
-            <div className="pdp-trust-strip">
-              <div className="pdp-trust-item">
-                <strong>COD</strong>
-                <span>Cash on delivery</span>
-              </div>
-              <div className="pdp-trust-item">
-                <strong>100%</strong>
-                <span>Pure & natural</span>
-              </div>
-              <div className="pdp-trust-item">
-                <strong>WhatsApp</strong>
-                <span>Fast support</span>
-              </div>
-            </div>
-
-            <div className="pdp-wa-card">
-              <div>
-                <div className="pdp-wa-title">Need help choosing?</div>
-                <p>Chat with us on WhatsApp for sizing, usage, and delivery questions.</p>
-              </div>
-              <Link
-                href={whatsappHelpUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="pdp-wa-link"
-              >
-                {CONTACT.phoneDisplay}
-              </Link>
             </div>
           </div>
         </div>

@@ -18,16 +18,19 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-const STORAGE_KEY = "safvane-theme";
+const STORAGE_KEY = "safvane-theme-v2";
+const DEFAULT_THEME: Theme = "light";
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("dark");
+  const [theme, setThemeState] = useState<Theme>(DEFAULT_THEME);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY) as Theme | null;
     if (saved === "light" || saved === "dark") {
       setThemeState(saved);
+    } else {
+      setThemeState(DEFAULT_THEME);
     }
     setMounted(true);
   }, []);
@@ -50,7 +53,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
       <div
         className="storefront"
-        data-theme={mounted ? theme : "dark"}
+        data-theme={mounted ? theme : DEFAULT_THEME}
         suppressHydrationWarning
       >
         {children}

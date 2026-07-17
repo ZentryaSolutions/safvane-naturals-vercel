@@ -1,6 +1,7 @@
 import { SafvaneNav } from "@/components/layout/SafvaneNav";
 import { SafvaneFooter } from "@/components/layout/SafvaneFooter";
 import { WhatsAppFloat } from "@/components/layout/WhatsAppFloat";
+import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import { PromoBanner } from "@/components/storefront/PromoBanner";
 import { MetaPixel } from "@/components/analytics/MetaPixel";
 import { JsonLd } from "@/components/seo/JsonLd";
@@ -12,6 +13,7 @@ import {
   organizationJsonLd,
   websiteJsonLd,
 } from "@/lib/seo";
+import { Suspense } from "react";
 import "@/styles/safvane.css";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +29,9 @@ export default async function StorefrontLayout({
   return (
     <ThemeProvider>
       <CartProvider>
+        <Suspense fallback={null}>
+          <ScrollToTop />
+        </Suspense>
         <MetaPixel />
         <JsonLd
           data={[

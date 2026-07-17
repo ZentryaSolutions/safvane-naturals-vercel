@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { ShieldCheck, Truck, User, MapPin, FileText, Loader2, X } from "lucide-react";
+import { ChevronDown, Loader2, X } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useSyncedCartShipping } from "@/hooks/useSyncedCartShipping";
 import { formatPrice } from "@/lib/utils";
@@ -34,6 +34,7 @@ export default function CheckoutPage() {
   const [redirecting, setRedirecting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [formError, setFormError] = useState("");
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const placingOrder = useRef(false);
   const initiateCheckoutTracked = useRef(false);
 
@@ -178,18 +179,123 @@ export default function CheckoutPage() {
 
   if (!redirecting && items.length === 0) return null;
 
+  const summaryBody = (
+    <>
+      <ul className="checkout-items">
+        {items.map((item) => (
+          <li key={item.variantId} className="checkout-item">
+            <div className="checkout-item-img">
+              {item.imageUrl ? (
+                <Image
+                  src={item.imageUrl}
+                  alt={item.productName}
+                  width={64}
+                  height={64}
+                  className="checkout-item-photo"
+                />
+              ) : (
+                <div className="checkout-item-photo checkout-item-placeholder" />
+              )}
+            </div>
+            <div className="checkout-item-info">
+              <p className="checkout-item-name">{item.productName}</p>
+              <p className="checkout-item-meta">{item.variantLabel}</p>
+              <div className="checkout-item-qty">
+                <div className="mini-step">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleUpdateQuantity(item.variantId, item.quantity - 1)
+                    }
+                    disabled={loading || redirecting}
+                    aria-label={`Decrease quantity of ${item.productName}`}
+                  >
+                    −
+                  </button>
+                  <span className="mv">{item.quantity}</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleUpdateQuantity(
+                        item.variantId,
+                        Math.min(item.stockQuantity, item.quantity + 1)
+                      )
+                    }
+                    disabled={
+                      loading ||
+                      redirecting ||
+                      item.quantity >= item.stockQuantity
+                    }
+                    aria-label={`Increase quantity of ${item.productName}`}
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+              <p className="checkout-item-price">
+                {formatPrice(item.price * item.quantity)}
+              </p>
+              {item.quantity >= item.stockQuantity && (
+                <p className="checkout-item-stock-hint">Max available</p>
+              )}
+            </div>
+            <button
+              type="button"
+              className="checkout-item-remove"
+              onClick={() => handleRemoveItem(item.variantId)}
+              disabled={loading || redirecting}
+              aria-label={`Remove ${item.productName} from order`}
+            >
+              <X size={16} aria-hidden />
+              <span>Remove</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      <div className="checkout-totals">
+        <div className="sr">
+          <span>Subtotal ({itemCount} item{itemCount === 1 ? "" : "s"})</span>
+          <span>{formatPrice(subtotal)}</span>
+        </div>
+        <div className="sr">
+          <span>Shipping</span>
+          <span>
+            {shippingFee === 0 ? (
+              <span className="shipping-free">FREE</span>
+            ) : (
+              formatPrice(shippingFee)
+            )}
+          </span>
+        </div>
+        <div className="sr total">
+          <span>Total</span>
+          <strong>{formatPrice(total)}</strong>
+        </div>
+      </div>
+
+      {amountForFreeShipping !== null && shippingFee > 0 && (
+        <p className="checkout-shipping-hint">
+          Add {formatPrice(amountForFreeShipping)} more for free shipping
+        </p>
+      )}
+    </>
+  );
+
   return (
     <div className="checkout-page">
       <div className="checkout-page-inner">
         <nav className="checkout-crumb" aria-label="Breadcrumb">
           <Link href="/shop">Shop</Link>
           <span aria-hidden>→</span>
+          <Link href="/cart">Cart</Link>
+          <span aria-hidden>→</span>
           <span>Checkout</span>
         </nav>
 
         <header className="checkout-header">
-          <h1>Safvane Naturals Checkout</h1>
-          <p>Please provide your details to complete your order.</p>
+          <h1>Checkout</h1>
+          <p>Enter your details to place your order.</p>
         </header>
 
         <div className="checkout-wrap">
@@ -204,66 +310,65 @@ export default function CheckoutPage() {
               {formError && <div className="stock-warn">{formError}</div>}
 
               <section className="checkout-card">
-                <h2 className="checkout-section-title">
-                  <User size={18} aria-hidden />
-                  Customer Information
-                </h2>
+                <h2 className="checkout-section-title">Contact</h2>
                 <div className="form-pair">
                   <div className="fg">
-                    <label htmlFor="first-name">First Name *</label>
+                    <label htmlFor="first-name">First name *</label>
                     <input
                       id="first-name"
                       required
+                      autoComplete="given-name"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
                       placeholder="Ahmad"
                     />
                   </div>
                   <div className="fg">
-                    <label htmlFor="last-name">Last Name *</label>
+                    <label htmlFor="last-name">Last name *</label>
                     <input
                       id="last-name"
                       required
+                      autoComplete="family-name"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
                       placeholder="Khan"
                     />
                   </div>
                 </div>
-                <div className="form-pair">
-                  <div className="fg">
-                    <label htmlFor="email">Email Address</label>
-                    <input
-                      id="email"
-                      type="email"
-                      value={form.customer_email}
-                      onChange={(e) =>
-                        setForm({ ...form, customer_email: e.target.value })
-                      }
-                      placeholder="For order confirmation"
-                    />
-                    {errors.customer_email && (
-                      <span className="field-error">
-                        {errors.customer_email[0]}
-                      </span>
-                    )}
-                  </div>
-                  <div className="fg">
-                    <label htmlFor="phone">Phone Number *</label>
-                    <input
-                      id="phone"
-                      type="tel"
-                      required
-                      placeholder="03XX XXXXXXX"
-                      value={form.customer_phone}
-                      onChange={(e) =>
-                        setForm({ ...form, customer_phone: e.target.value })
-                      }
-                    />
-                    {errors.customer_phone && (
-                      <span className="field-error">{errors.customer_phone[0]}</span>
-                    )}
-                  </div>
+                <div className="fg full">
+                  <label htmlFor="phone">Phone *</label>
+                  <input
+                    id="phone"
+                    type="tel"
+                    required
+                    autoComplete="tel"
+                    placeholder="03XX XXXXXXX"
+                    value={form.customer_phone}
+                    onChange={(e) =>
+                      setForm({ ...form, customer_phone: e.target.value })
+                    }
+                  />
+                  {errors.customer_phone && (
+                    <span className="field-error">{errors.customer_phone[0]}</span>
+                  )}
+                </div>
+                <div className="fg full">
+                  <label htmlFor="email">Email (optional)</label>
+                  <input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    value={form.customer_email}
+                    onChange={(e) =>
+                      setForm({ ...form, customer_email: e.target.value })
+                    }
+                    placeholder="For order updates"
+                  />
+                  {errors.customer_email && (
+                    <span className="field-error">
+                      {errors.customer_email[0]}
+                    </span>
+                  )}
                 </div>
                 {errors.customer_name && (
                   <span className="field-error">{errors.customer_name[0]}</span>
@@ -271,15 +376,13 @@ export default function CheckoutPage() {
               </section>
 
               <section className="checkout-card">
-                <h2 className="checkout-section-title">
-                  <MapPin size={18} aria-hidden />
-                  Delivery Address
-                </h2>
+                <h2 className="checkout-section-title">Delivery</h2>
                 <div className="fg full">
-                  <label htmlFor="address">Street Address *</label>
+                  <label htmlFor="address">Address *</label>
                   <input
                     id="address"
                     required
+                    autoComplete="street-address"
                     value={form.delivery_address}
                     onChange={(e) =>
                       setForm({ ...form, delivery_address: e.target.value })
@@ -296,6 +399,7 @@ export default function CheckoutPage() {
                     <input
                       id="city"
                       required
+                      autoComplete="address-level2"
                       value={form.city}
                       onChange={(e) => setForm({ ...form, city: e.target.value })}
                       placeholder="Attock"
@@ -305,7 +409,7 @@ export default function CheckoutPage() {
                     )}
                   </div>
                   <div className="fg">
-                    <label htmlFor="area">Area</label>
+                    <label htmlFor="area">Area (optional)</label>
                     <input
                       id="area"
                       value={area}
@@ -314,28 +418,23 @@ export default function CheckoutPage() {
                     />
                   </div>
                 </div>
-                <div className="fg">
-                  <label htmlFor="country">Country</label>
-                  <input id="country" value="Pakistan" readOnly disabled />
-                </div>
-              </section>
-
-              <section className="checkout-card">
-                <h2 className="checkout-section-title">
-                  <FileText size={18} aria-hidden />
-                  Additional Information
-                </h2>
                 <div className="fg full">
-                  <label htmlFor="note">Order Notes (optional)</label>
-                  <textarea
+                  <label htmlFor="note">Order note (optional)</label>
+                  <input
                     id="note"
-                    rows={3}
-                    placeholder="Preferred delivery time, gate code, etc."
                     value={form.order_note}
                     onChange={(e) =>
                       setForm({ ...form, order_note: e.target.value })
                     }
+                    placeholder="Gate code, preferred time, etc."
                   />
+                </div>
+              </section>
+
+              <section className="checkout-card checkout-payment-card">
+                <h2 className="checkout-section-title">Payment</h2>
+                <div className="checkout-payment-option" aria-current="true">
+                  <span>Cash on Delivery (COD)</span>
                 </div>
               </section>
 
@@ -346,10 +445,10 @@ export default function CheckoutPage() {
               >
                 <span>
                   {loading || redirecting
-                    ? "Placing Order..."
+                    ? "Placing order…"
                     : items.length === 0
                       ? "Cart is empty"
-                      : "Place Order (Cash on Delivery)"}
+                      : `Place order · ${formatPrice(total)}`}
                 </span>
               </button>
 
@@ -359,136 +458,29 @@ export default function CheckoutPage() {
             </form>
           </div>
 
-          <aside className="checkout-r">
+          <aside className={`checkout-r${summaryOpen ? " is-open" : ""}`}>
             <div className="checkout-summary-card">
+              <button
+                type="button"
+                className="checkout-summary-toggle"
+                onClick={() => setSummaryOpen((open) => !open)}
+                aria-expanded={summaryOpen}
+              >
+                <span className="checkout-summary-toggle-left">
+                  Order summary
+                  <ChevronDown
+                    size={18}
+                    className={`checkout-summary-chevron${summaryOpen ? " open" : ""}`}
+                    aria-hidden
+                  />
+                </span>
+                <span className="checkout-summary-toggle-total">
+                  {formatPrice(total)}
+                </span>
+              </button>
+
               <h3 className="checkout-summary-title">Order Summary</h3>
-
-              <ul className="checkout-items">
-                {items.map((item) => (
-                  <li key={item.variantId} className="checkout-item">
-                    <div className="checkout-item-img">
-                      {item.imageUrl ? (
-                        <Image
-                          src={item.imageUrl}
-                          alt={item.productName}
-                          width={64}
-                          height={64}
-                          className="checkout-item-photo"
-                        />
-                      ) : (
-                        <div className="checkout-item-photo checkout-item-placeholder" />
-                      )}
-                    </div>
-                    <div className="checkout-item-info">
-                      <p className="checkout-item-name">{item.productName}</p>
-                      <p className="checkout-item-meta">{item.variantLabel}</p>
-                      <div className="checkout-item-qty">
-                        <div className="mini-step">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleUpdateQuantity(
-                                item.variantId,
-                                item.quantity - 1
-                              )
-                            }
-                            disabled={loading || redirecting}
-                            aria-label={`Decrease quantity of ${item.productName}`}
-                          >
-                            −
-                          </button>
-                          <span className="mv">{item.quantity}</span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleUpdateQuantity(
-                                item.variantId,
-                                Math.min(item.stockQuantity, item.quantity + 1)
-                              )
-                            }
-                            disabled={
-                              loading ||
-                              redirecting ||
-                              item.quantity >= item.stockQuantity
-                            }
-                            aria-label={`Increase quantity of ${item.productName}`}
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                      <p className="checkout-item-price">
-                        {formatPrice(item.price * item.quantity)}
-                      </p>
-                      {item.quantity >= item.stockQuantity && (
-                        <p className="checkout-item-stock-hint">Max available</p>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      className="checkout-item-remove"
-                      onClick={() => handleRemoveItem(item.variantId)}
-                      disabled={loading || redirecting}
-                      aria-label={`Remove ${item.productName} from order`}
-                    >
-                      <X size={16} aria-hidden />
-                      <span>Remove</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-
-              <div className="checkout-totals">
-                <div className="sr">
-                  <span>Subtotal ({itemCount} items)</span>
-                  <span>{formatPrice(subtotal)}</span>
-                </div>
-                <div className="sr">
-                  <span>Shipping</span>
-                  <span>
-                    {shippingFee === 0 ? (
-                      <span className="shipping-free">FREE</span>
-                    ) : (
-                      formatPrice(shippingFee)
-                    )}
-                  </span>
-                </div>
-                <div className="sr total">
-                  <span>Total</span>
-                  <strong>{formatPrice(total)}</strong>
-                </div>
-              </div>
-
-              <div className="checkout-cod">
-                <div className="checkout-cod-icon" aria-hidden>
-                  💳
-                </div>
-                <div>
-                  <strong>Cash on Delivery</strong>
-                  <p>Pay when you receive your order.</p>
-                </div>
-              </div>
-
-              <div className="checkout-guarantee">
-                <ShieldCheck size={20} aria-hidden />
-                <div>
-                  <strong>7-Day Quality Guarantee</strong>
-                  <p>
-                    Shop with confidence — contact us within 7 days for any quality
-                    concerns.
-                  </p>
-                </div>
-              </div>
-
-              {amountForFreeShipping !== null && shippingFee > 0 && (
-                <div className="checkout-shipping-upsell">
-                  <Truck size={18} aria-hidden />
-                  <span>
-                    Add <strong>{formatPrice(amountForFreeShipping)}</strong> more for{" "}
-                    <strong>FREE shipping!</strong>
-                  </span>
-                </div>
-              )}
+              <div className="checkout-summary-body">{summaryBody}</div>
             </div>
           </aside>
         </div>
