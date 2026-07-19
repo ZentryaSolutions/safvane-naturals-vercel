@@ -18,8 +18,8 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-const STORAGE_KEY = "safvane-theme-v2";
-const DEFAULT_THEME: Theme = "light";
+const STORAGE_KEY = "safvane-theme-v3";
+const DEFAULT_THEME: Theme = "dark";
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(DEFAULT_THEME);

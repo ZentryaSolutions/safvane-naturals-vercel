@@ -1295,6 +1295,10 @@ footer.safvane-footer{
   --logo-primary:#f2edd8;
 }
 .storefront[data-theme="dark"]{
+  /* Brighter muted text + readable gold accents on near-black */
+  --dim:#9c9486;
+  --goldd:#d4b84a;
+  --bone:#f5f1e6;
   --img-bg:radial-gradient(ellipse at 50% 35%,#1e1808,#090805);
   --nav-stuck-bg:rgba(9,8,5,0.9);
   --details-bg:var(--card2);
@@ -1303,8 +1307,8 @@ footer.safvane-footer{
   --footer-bg:transparent;
   --footer-text:var(--bone);
   --footer-muted:var(--dim);
-  --footer-label:var(--dim);
-  --footer-link:var(--goldd);
+  --footer-label:#8a8274;
+  --footer-link:var(--goldl);
   --footer-line:var(--line);
   --footer-surface:transparent;
 }
